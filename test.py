@@ -15,6 +15,7 @@ class Config:
             "optimizer": "lazy_adam",
             "epochs": 10000,
             "batch_size": 16,
+            "embedding_size": 512,
             "init_learning_rate": 1e-5,
             "input_shape": [256, 256, 3],
         }
@@ -33,7 +34,7 @@ def main():
     ds.load()
     test_images = ds.get_data()
 
-    model_path = "/media/fmuenke/8c63b673-ade7-4948-91ca-aba40636c42c/ai_models/test_ae"
+    model_path = "/media/fmuenke/8c63b673-ade7-4948-91ca-aba40636c42c/ai_models/test_ae_2"
     results_folder = os.path.join(model_path, "results")
     check_n_make_dir(results_folder, True)
 

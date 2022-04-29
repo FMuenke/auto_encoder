@@ -4,8 +4,9 @@ from tensorflow.keras import layers
 
 
 class Backbone:
-    def __init__(self, backbone_type, loss_type="mse", weights="imagenet"):
+    def __init__(self, backbone_type, embedding_size, loss_type="mse", weights="imagenet"):
         self.backbone_type = backbone_type
+        self.embedding_size = embedding_size
         self.loss_type = loss_type
         self.weights = weights
 
@@ -53,22 +54,18 @@ class Backbone:
 
         raise ValueError("{} Backbone was not recognised".format(self.backbone_type))
 
-    def build_decoder(self, inputs, latent_shape):
-        b, x, y, f = latent_shape
-        x = layers.Dense(x*y*f, name='dense_1')(inputs)
-        print("Decoder")
-        print(x.shape)
-        # x = layers.Reshape((y, x, f), name='Reshape_Layer', dtype=tf.float32)(x)
+    def build_decoder(self, inputs):
+        x = layers.Dense(8*8*64, name='dense_1')(inputs)
         x = tf.reshape(x, [-1, 8, 8, 64], name='Reshape_Layer')
-        print(x.shape)
+
         x = layers.Conv2DTranspose(64, 3, strides=2, padding='same', name='conv_transpose_1')(x)
         x = layers.BatchNormalization(name='bn_d1')(x)
         x = layers.LeakyReLU(name='lrelu_d1')(x)
-        print(x.shape)
+
         x = layers.Conv2DTranspose(64, 3, strides=2, padding='same', name='conv_transpose_2')(x)
         x = layers.BatchNormalization(name='bn_d2')(x)
         x = layers.LeakyReLU(name='lrelu_d2')(x)
-        print(x.shape)
+
         x = layers.Conv2DTranspose(32, 3, 2, padding='same', name='conv_transpose_3')(x)
         x = layers.BatchNormalization(name='bn_d3')(x)
         x = layers.LeakyReLU(name='lrelu_d3')(x)
@@ -76,15 +73,16 @@ class Backbone:
         x = layers.Conv2DTranspose(32, 3, 2, padding='same', name='conv_transpose_4')(x)
         x = layers.BatchNormalization(name='bn_d4')(x)
         x = layers.LeakyReLU(name='lrelu_d4')(x)
-        print(x.shape)
         outputs = layers.Conv2DTranspose(3, 3, 2, padding='same', activation='sigmoid', name='conv_transpose_5')(x)
-        print(outputs.shape)
         return outputs
 
-    def build(self, input_shape):
+    def build(self, input_shape, add_decoder=True):
         x_input, latent = self.build_encoder(input_shape)
         latent_flat = layers.Flatten()(latent)
-        bottleneck = layers.Dense(512)(latent_flat)
-        output = self.build_decoder(bottleneck, latent.shape)
-        return x_input, output
+        bottleneck = layers.Dense(self.embedding_size)(latent_flat)
+        if add_decoder:
+            output = self.build_decoder(bottleneck)
+            return x_input, output
+        else:
+            return x_input, bottleneck
 

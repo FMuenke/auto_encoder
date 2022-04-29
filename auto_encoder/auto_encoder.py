@@ -38,6 +38,7 @@ class AutoEncoder:
 
         self.input_shape = cfg.opt["input_shape"]
         self.backbone = cfg.opt["backbone"]
+        self.embedding_size = cfg.opt["embedding_size"]
         if "loss" in cfg.opt:
             self.loss_type = cfg.opt["loss"]
 
@@ -68,9 +69,9 @@ class AutoEncoder:
         res = np.array(res)
         return res
 
-    def build(self, compile_model=True):
-        backbone = Backbone(self.backbone, loss_type=self.loss_type)
-        x_input, y = backbone.build(self.input_shape)
+    def build(self, compile_model=True, add_decoder=True):
+        backbone = Backbone(self.backbone, embedding_size=self.embedding_size, loss_type=self.loss_type)
+        x_input, y = backbone.build(self.input_shape, add_decoder=add_decoder)
 
         self.model = Model(inputs=x_input, outputs=y)
         # print(self.model.summary())
