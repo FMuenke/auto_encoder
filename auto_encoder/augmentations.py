@@ -94,8 +94,8 @@ class SaltNPepper:
 
     def apply(self, img):
         h, w, c = img.shape
-        snp_h = int(h / self.grain_size)
-        snp_w = int(w / self.grain_size)
+        snp_h = max(int(h / self.grain_size), 3)
+        snp_w = max(int(w / self.grain_size), 3)
         snp = self.rng.integers(-self.max_delta, self.max_delta, size=[snp_h, snp_w, c])
         snp = cv2.resize(snp, (w, h), interpolation=cv2.INTER_NEAREST)
         img = img.astype(np.int) + snp

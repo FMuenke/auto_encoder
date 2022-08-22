@@ -4,7 +4,9 @@ import numpy as np
 from auto_encoder.data_set import DataSet
 from auto_encoder.auto_encoder import AutoEncoder
 
-from auto_encoder.util import check_n_make_dir
+from auto_encoder.util import check_n_make_dir, load_dict
+
+import argparse
 
 
 class Config:
@@ -29,16 +31,22 @@ def make_result_picture(img, res):
     return complete
 
 
-def main():
-    ds = DataSet("/media/fmuenke/8c63b673-ade7-4948-91ca-aba40636c42c/datasets/traffic_sign_classification/test/0/images")
+def main(args_):
+    mf = args_.model
+    df = args_.dataset_folder
+
+    ds = DataSet(df)
     ds.load()
     test_images = ds.get_data()
 
-    model_path = "/media/fmuenke/8c63b673-ade7-4948-91ca-aba40636c42c/ai_models/test_ae_2"
-    results_folder = os.path.join(model_path, "results")
+    cfg = Config()
+    if os.path.isfile(os.path.join(mf, "opt.json")):
+        cfg.opt = load_dict(os.path.join(mf, "opt.json"))
+
+    results_folder = os.path.join(mf, "results")
     check_n_make_dir(results_folder, True)
 
-    ae = AutoEncoder(model_path, Config())
+    ae = AutoEncoder(mf, cfg)
     ae.build(False)
 
     for i in test_images:
@@ -50,5 +58,24 @@ def main():
         cv2.imwrite(os.path.join(results_folder, i.name[:-4] + ".png"), make_result_picture(data, pred))
 
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--dataset_folder",
+        "-df",
+        default="./data/train",
+        help="Path to directory with dataset",
+    )
+    parser.add_argument(
+        "--model",
+        "-m",
+        default="./test/",
+        help="Path to model",
+    )
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    main()
+    args = parse_args()
+    main(args)
+
