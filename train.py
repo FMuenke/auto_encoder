@@ -13,7 +13,9 @@ import argparse
 class Config:
     def __init__(self):
         self.opt = {
-            "backbone": "basic_128",
+            "backbone": "basic",
+            "resolution": 1,
+            "depth": 4,
             "loss": "mse",
             "optimizer": "adam",
             "batch_size": 64,
