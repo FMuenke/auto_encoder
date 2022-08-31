@@ -1,13 +1,11 @@
 import os
-import cv2
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras import optimizers
 
 import pickle
-import tensorflow_addons as tfa
 from tensorflow.keras.models import Model
-from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping
+from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping, CSVLogger
 
 
 from auto_encoder.backbone import Backbone
@@ -50,10 +48,6 @@ class AutoEncoder:
         if "optimizer" in cfg.opt:
             if "adam" == cfg.opt["optimizer"]:
                 optimizer = optimizers.Adam(lr=cfg.opt["init_learning_rate"])
-            elif "lazy_adam" == cfg.opt["optimizer"]:
-                optimizer = tfa.optimizers.LazyAdam(lr=cfg.opt["init_learning_rate"])
-            elif "ranger" == cfg.opt["optimizer"]:
-                optimizer = tfa.optimizers.RectifiedAdam(learning_rate=cfg.opt["init_learning_rate"])
         if optimizer is None:
             optimizer = optimizers.Adam(lr=cfg.opt["init_learning_rate"])
         self.optimizer = optimizer
@@ -134,8 +128,9 @@ class AutoEncoder:
         patience = 100
         reduce_lr = ReduceLROnPlateau(factor=0.5, verbose=1, patience=int(patience*0.5))
         early_stop = EarlyStopping(monitor="val_loss", patience=patience, verbose=1)
+        csv_logger = CSVLogger(filename=os.path.join(self.model_folder, "logs.csv"))
 
-        callback_list = [checkpoint, reduce_lr, early_stop]
+        callback_list = [checkpoint, reduce_lr, early_stop, csv_logger]
 
         history = self.model.fit(
             x=training_generator,

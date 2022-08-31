@@ -11,7 +11,7 @@ class DataGenerator(keras.utils.Sequence):
         batch_size,
         image_size,
         augmentations=None,
-        shuffle=False,
+        shuffle=True,
     ):
         self.image_size = image_size
         self.batch_size = batch_size

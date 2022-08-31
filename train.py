@@ -13,14 +13,14 @@ import argparse
 class Config:
     def __init__(self):
         self.opt = {
-            "backbone": "basic",
+            "backbone": "resnet",
             "resolution": 1,
             "depth": 4,
             "loss": "mse",
             "optimizer": "adam",
             "batch_size": 64,
             "embedding_size": 64,
-            "init_learning_rate": 1e-5,
+            "init_learning_rate": 1e-3,
             "input_shape": [128, 128, 3],
         }
 
@@ -32,7 +32,7 @@ def main(args_):
     ds = DataSet(df)
 
     ae = AutoEncoder(mf, Config())
-    ae.build(True)
+    ae.build(add_decoder=True)
 
     ds.load()
     train_images, test_image = ds.get_data(0.8)
