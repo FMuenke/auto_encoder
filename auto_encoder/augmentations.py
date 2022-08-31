@@ -197,14 +197,32 @@ def apply_tiny_rotation(img, lab):
     return img.astype(np.uint8), lab.astype(np.int)
 
 
+def apply_cut_out(img):
+    height, width, ch = img.shape
+    prz_zoom = 0.25
+    w_random = np.random.randint(int(width * prz_zoom))
+    h_random = np.random.randint(int(height * prz_zoom))
+    x1_img = np.random.randint(width - w_random)
+    y1_img = np.random.randint(height - h_random)
+
+    mask = np.ones((h_random, w_random, 3))
+    mask[:, :, 0] = np.random.randint(0, 255)
+    mask[:, :, 1] = np.random.randint(0, 255)
+    mask[:, :, 2] = np.random.randint(0, 255)
+
+    img[y1_img:y1_img+h_random, x1_img:x1_img+w_random, :] = mask
+    return img
+
+
 class Augmentations:
-    def __init__(self, flips=True, crop=True, rotation=True, noise=True, color=True, blur=True):
+    def __init__(self, flips=True, crop=True, rotation=True, noise=True, color=True, blur=True, cut_out=True):
         self.flips = flips
         self.rotation = rotation
         self.crop = crop
         self.noise = noise
         self.color = color
         self.blur = blur
+        self.cut_out = cut_out
 
     def apply(self, img, tar):
         if 0 == np.random.randint(6) and self.flips:
@@ -227,5 +245,8 @@ class Augmentations:
 
         if 0 == np.random.randint(5) and self.blur:
             img = apply_blur(img)
+
+        if 0 == np.random.randint(5) and self.cut_out:
+            img = apply_cut_out(img)
 
         return img, tar
