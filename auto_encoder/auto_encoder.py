@@ -90,11 +90,11 @@ class AutoEncoder:
                 if model.lower().endswith((".hdf5", ".h5")):
                     model_path = os.path.join(self.model_folder, model)
             if model_path is not None:
-                print("Model-Weights are loaded from: {}".format(model_path))
+                print("[INFO] Model-Weights are loaded from: {}".format(model_path))
                 self.model.load_weights(model_path, by_name=True)
 
         else:
-            print("No Weights were found")
+            print("[INFO] No Weights were found")
 
     def fit(self, tag_set_train, tag_set_test, augmentations):
         if None in self.input_shape:

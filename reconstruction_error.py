@@ -3,6 +3,7 @@ import os
 import numpy as np
 from auto_encoder.data_set import DataSet
 from auto_encoder.auto_encoder import AutoEncoder
+from auto_encoder.util import prepare_input
 
 from auto_encoder.util import check_n_make_dir, save_dict, load_dict
 
@@ -50,9 +51,12 @@ def load_data_set(model, path_to_data, class_mapping=None, cls_to_consider=None)
     ds_test.load()
     images = ds_test.get_data()
 
-    data_x = None
-    data_y = []
-    data_frame = {"class_name": [], "cls_id": []}
+    data_frame = {
+        "class_name": [],
+        "cls_id": [],
+        "MAE": [],
+        "MSE": []
+    }
     if class_mapping is None:
         class_mapping = {}
 
@@ -66,16 +70,15 @@ def load_data_set(model, path_to_data, class_mapping=None, cls_to_consider=None)
             class_mapping[cls] = len(class_mapping)
         pred = model.inference(data)
 
-        if data_x is None:
-            data_x = pred
-        else:
-            data_x = np.concatenate([data_x, pred], axis=0)
-        data_y.append(class_mapping[cls])
+        data = prepare_input(data, input_shape=model.input_shape)
+        rec_error_mae = np.mean(np.abs(data - pred))
+        rec_error_mse = np.mean(np.sqrt(np.abs(data - pred)))
 
         data_frame["class_name"].append(cls)
         data_frame["cls_id"].append(class_mapping[cls])
-    data_y = np.array(data_y)
-    return data_x, data_y, data_frame, class_mapping
+        data_frame["MAE"].append(rec_error_mae)
+        data_frame["MSE"].append(rec_error_mse)
+    return data_frame, class_mapping
 
 
 def get_data_sets(ds_path, model_path):
@@ -83,19 +86,15 @@ def get_data_sets(ds_path, model_path):
     if os.path.isfile(os.path.join(model_path, "opt.json")):
         cfg.opt = load_dict(os.path.join(model_path, "opt.json"))
     ae = AutoEncoder(model_path, cfg)
-    ae.build(False, add_decoder=False)
+    ae.build(False, add_decoder=True)
 
-    x_train, y_train, data_frame_train, class_mapping = load_data_set(ae, os.path.join(ds_path, "train", "known"))
-    np.save(os.path.join(model_path, "x_train.npy"), x_train)
-    np.save(os.path.join(model_path, "y_train.npy"), y_train)
-    save_dict(data_frame_train, os.path.join(model_path, "data_frame_train.json"))
-    save_dict(class_mapping, os.path.join(model_path, "class_mapping_train.json"))
+    data_frame_train, class_mapping = load_data_set(ae, os.path.join(ds_path, "train", "known"))
+    save_dict(data_frame_train, os.path.join(model_path, "data_frame_rec_err_train.json"))
+    save_dict(class_mapping, os.path.join(model_path, "class_mapping_rec_err_train.json"))
 
-    x_test, y_test, data_frame_test, class_mapping = load_data_set(ae, os.path.join(ds_path, "test"), class_mapping)
-    np.save(os.path.join(model_path, "x_test.npy"), x_test)
-    np.save(os.path.join(model_path, "y_test.npy"), y_test)
-    save_dict(data_frame_test, os.path.join(model_path, "data_frame_test.json"))
-    save_dict(class_mapping, os.path.join(model_path, "class_mapping_test.json"))
+    data_frame_test, class_mapping = load_data_set(ae, os.path.join(ds_path, "test"), class_mapping)
+    save_dict(data_frame_test, os.path.join(model_path, "data_frame_rec_err_test.json"))
+    save_dict(class_mapping, os.path.join(model_path, "class_mapping_rec_err_test.json"))
 
 
 def mark_unknowns(data_frame, class_mapping):
@@ -132,79 +131,30 @@ def remove_outliers(x_train, y_train, x_test, y_test, class_mapping_train, data_
     print("[NN] ", auroc)
 
 
-def classify_knows(x_train, y_train, x_test, y_test, unknown_cls):
-    print("[INFO] Fitting classifier...")
-    classifier = LogisticRegression()
-    classifier.fit(x_train, y_train)
-
-    x_test_known = x_test[unknown_cls == "known", :]
-    y_test_known = y_test[unknown_cls == "known"]
-    y_pred = classifier.predict(x_test_known)
-    print("CLASSIFIER CLASSIFICATION REPORT [KNOWN SAMPLES] - F1-Score: {}".format(
-        f1_score(y_test_known, y_pred, average="weighted")))
-    print(classification_report(y_test_known, y_pred))
-
-
-def apply_umap():
-    dim_reducer = UMAP(n_components=2)
-    dim_reducer.fit(x_train)
-    x_t = dim_reducer.transform(x_train)
-    data_frame_train["x1"] = x_t[:, 0]
-    data_frame_train["x2"] = x_t[:, 1]
-
-    x_t = dim_reducer.transform(x_test)
-    data_frame_test["x1"] = x_t[:, 0]
-    data_frame_test["x2"] = x_t[:, 1]
-    data_frame_test["class_name"] = data_frame_test["class_name"]
-    data_frame_test["cls_id"] = y_test
-    data_frame_test = pd.DataFrame(data_frame_test)
-    fig, axes = plt.subplots(1, 2)
-    sns.displot(data_frame_test, x="x1", y="x2", hue="status", legend=True, kind="kde", ax=axes[0])
-    sns.displot(data_frame_test, x="x1", y="x2", hue="class_name", legend=False, kind="kde", ax=axes[1])
-    plt.show()
-
-
 def main():
     ds_path = "/media/fmuenke/8c63b673-ade7-4948-91ca-aba40636c42c/datasets/TS-DATA-GROUPED"
     model_path = "/media/fmuenke/8c63b673-ade7-4948-91ca-aba40636c42c/ai_models/AE_128-ENC64-D4-R1"
 
     # get_data_sets(ds_path, model_path)
 
-    x_train = np.load(os.path.join(model_path, "x_train.npy"))
-    y_train = np.load(os.path.join(model_path, "y_train.npy"))
-    data_frame_train = load_dict(os.path.join(model_path, "data_frame_train.json"))
-    class_mapping_train = load_dict(os.path.join(model_path, "class_mapping_train.json"))
+    data_frame_train = load_dict(os.path.join(model_path, "data_frame_rec_err_train.json"))
+    class_mapping_train = load_dict(os.path.join(model_path, "class_mapping_rec_err_train.json"))
 
-    x_test = np.load(os.path.join(model_path, "x_test.npy"))
-    y_test = np.load(os.path.join(model_path, "y_test.npy"))
-    data_frame_test = load_dict(os.path.join(model_path, "data_frame_test.json"))
+    data_frame_test = load_dict(os.path.join(model_path, "data_frame_rec_err_test.json"))
 
     unknown_cls_train, unknown_id_train = mark_unknowns(data_frame_train, class_mapping_train)
     unknown_cls, unknown_id = mark_unknowns(data_frame_test, class_mapping_train)
     data_frame_test["status"] = unknown_cls
 
-    remove_outliers(x_train, y_train, x_test, y_test, class_mapping_train, data_frame_test)
-    # classify_knows(x_train, y_train, x_test, y_test, unknown_cls)
+    auroc = roc_auc_score(unknown_id, np.array(data_frame_test["MSE"]))
+    print("[Reconstruction Error] ", 1 - auroc)
 
-    dim_reducer = UMAP(n_components=4)
-    dim_reducer.fit(x_train)
-    x_t = dim_reducer.transform(x_train)
-    data_frame_train["x1"] = x_t[:, 0]
-    data_frame_train["x2"] = x_t[:, 1]
-
-    x_t = dim_reducer.transform(x_test)
-    data_frame_test["x1"] = x_t[:, 0]
-    data_frame_test["x2"] = x_t[:, 1]
-    data_frame_test["x3"] = x_t[:, 2]
-    data_frame_test["x4"] = x_t[:, 3]
-    data_frame_test["class_name"] = data_frame_test["class_name"]
-    data_frame_test["cls_id"] = y_test
     data_frame_test = pd.DataFrame(data_frame_test)
-    ### PAIRPLOTS?!?!?!
-    # sns.displot(data=data_frame_test, x="x1", y="x2", hue="status", legend=True, kind="kde")
-    # sns.displot(data=data_frame_test, x="x1", y="x2", hue="class_name", legend=False, kind="kde")
-    sns.pairplot(data=data_frame_test, vars=["x1", "x2", "x3", "x4"], hue="status", kind="kde")
+    sns.displot(data=data_frame_test, x="MAE", hue="status", kind="kde")
     plt.show()
+    sns.displot(data=data_frame_test, x="MSE", hue="status", kind="kde")
+    plt.show()
+
 
 
 if __name__ == "__main__":

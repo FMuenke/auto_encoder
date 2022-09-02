@@ -34,6 +34,9 @@ class TrainImage:
 
     def load_y(self):
         cls_name = os.path.basename(self.base_path)
+        if cls_name == "images":
+            previous_folder = os.path.dirname(self.base_path)
+            cls_name = os.path.basename(previous_folder)
         return cls_name
 
 
@@ -60,7 +63,7 @@ class DataSet:
     def load(self):
         print("[INFO] Loading images from {} ...".format(self.path))
         self.images = load_folder(self.path)
-        print("Found: {} Images".format(len(self.images)))
+        print("[INFO] Found: {} Images".format(len(self.images)))
 
     def get_data(self, split=0.0):
         if split == 0:
