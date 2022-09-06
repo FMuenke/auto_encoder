@@ -13,7 +13,7 @@ import argparse
 class Config:
     def __init__(self):
         self.opt = {
-            "backbone": "resnet50",
+            "backbone": "resnet",
             "resolution": 1,
             "depth": 4,
             "loss": "mse",

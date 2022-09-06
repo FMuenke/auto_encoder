@@ -7,7 +7,7 @@ import json
 def prepare_input(data, input_shape):
     data = cv2.resize(data, (int(input_shape[1]), int(input_shape[0])), interpolation=cv2.INTER_CUBIC)
     data = data.astype(np.float)
-    data = data / 255
+    data = data / 255 - 0.5
     return data
 
 
