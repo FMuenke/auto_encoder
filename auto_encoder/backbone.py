@@ -95,7 +95,7 @@ def resnet_auto_encoder(input_shape, embedding_size, depth, resolution):
     for i in range(depth - 1):
         x = make_resnet_decoder_block(x, 16 * (depth - i) * resolution, ident=i + 1)
 
-    output = layers.Conv2DTranspose(3, 3, 2, padding='same', activation='hard_sigmoid', name='conv_transpose_5')(x)
+    output = layers.Conv2DTranspose(3, 3, 2, padding='same', activation='linear', name='conv_transpose_5')(x)
     return input_layer, bottleneck, output
 
 
@@ -153,7 +153,7 @@ def resnet50_auto_encoder(input_shape, embedding_size, resolution=1):
     x = make_resnet_decoder_block(x, 32 * resolution, ident="2-b", upsample=False)
     x = make_resnet_decoder_block(x, 16 * resolution, ident="2-a", upsample=True)
 
-    output = layers.Conv2DTranspose(3, 3, 2, padding='same', activation='hard_sigmoid', name='conv_transpose_5')(x)
+    output = layers.Conv2DTranspose(3, 3, 2, padding='same', activation='linear', name='conv_transpose_5')(x)
     return input_layer, bottleneck, output
 
 
@@ -181,7 +181,7 @@ def basic_auto_encoder(input_shape, embedding_size, depth, resolution):
     for i in range(depth - 1):
         x = make_decoder_block(x, 16 * (depth - i) * resolution, ident=i+1)
 
-    output = layers.Conv2DTranspose(3, 3, 2, padding='same', activation='hard_sigmoid', name='conv_transpose_5')(x)
+    output = layers.Conv2DTranspose(3, 3, 2, padding='same', activation='linear', name='conv_transpose_5')(x)
 
     return input_layer, bottleneck, output
 
