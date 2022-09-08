@@ -165,10 +165,10 @@ def apply_umap():
 
 
 def main():
-    ds_path = "/media/fmuenke/8c63b673-ade7-4948-91ca-aba40636c42c/datasets/TS-DATA-GROUPED"
-    model_path = "/media/fmuenke/8c63b673-ade7-4948-91ca-aba40636c42c/ai_models/AE_128-ENC64-D4-R1"
+    ds_path = "/home/fmuenke/datasets/TS-DATA-GROUPED"
+    model_path = "/home/fmuenke/ai_models/AE-RES-ENC64-D4-R1"
 
-    # get_data_sets(ds_path, model_path)
+    get_data_sets(ds_path, model_path)
 
     x_train = np.load(os.path.join(model_path, "x_train.npy"))
     y_train = np.load(os.path.join(model_path, "y_train.npy"))

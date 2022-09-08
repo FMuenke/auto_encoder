@@ -24,7 +24,7 @@ class Config:
 
 
 def make_result_picture(img, res):
-    res = res * 255
+    res = np.clip((res + 0.5) * 255, 0, 255)
     img = cv2.resize(img, (res.shape[1], res.shape[0]), interpolation=cv2.INTER_CUBIC)
     block = np.ones((img.shape[0], 10, 3))
     complete = np.concatenate([img, block, res], axis=1)

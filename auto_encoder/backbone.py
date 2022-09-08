@@ -134,8 +134,8 @@ def resnet50_auto_encoder(input_shape, embedding_size, resolution=1):
     reshape_layer_dim = input_shape[0] / (2 ** depth)
     assert reshape_layer_dim in [2 ** x for x in [0, 1, 2, 3, 4, 5, 6]]
 
-    x = layers.Dense(int(reshape_layer_dim * reshape_layer_dim * 128), name='dense_1')(bottleneck)
-    x = tf.reshape(x, [-1, int(reshape_layer_dim), int(reshape_layer_dim), 128], name='Reshape_Layer')
+    x = layers.Dense(int(reshape_layer_dim * reshape_layer_dim * 128 * resolution), name='dense_1')(bottleneck)
+    x = tf.reshape(x, [-1, int(reshape_layer_dim), int(reshape_layer_dim), 128 * resolution], name='Reshape_Layer')
 
     x = make_resnet_decoder_block(x, 128 * resolution, ident="4-c", upsample=False)
     x = make_resnet_decoder_block(x, 128 * resolution, ident="4-b", upsample=False)
