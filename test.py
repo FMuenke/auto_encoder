@@ -1,6 +1,7 @@
 import cv2
 import os
 import numpy as np
+from tqdm import tqdm
 from auto_encoder.data_set import DataSet
 from auto_encoder.auto_encoder import AutoEncoder
 
@@ -11,21 +12,10 @@ import argparse
 
 class Config:
     def __init__(self):
-        self.opt = {
-            "backbone": "basic",
-            "loss": "mse",
-            "optimizer": "lazy_adam",
-            "epochs": 10000,
-            "batch_size": 16,
-            "embedding_size": 512,
-            "init_learning_rate": 1e-5,
-            "input_shape": [256, 256, 3],
-        }
+        self.opt = {}
 
 
 def make_result_picture(img, res):
-    res = np.clip((res + 0.5) * 255, 0, 255)
-    img = cv2.resize(img, (res.shape[1], res.shape[0]), interpolation=cv2.INTER_CUBIC)
     block = np.ones((img.shape[0], 10, 3))
     complete = np.concatenate([img, block, res], axis=1)
     return complete
@@ -49,14 +39,24 @@ def main(args_):
     ae = AutoEncoder(mf, cfg)
     ae.build(False)
 
-    for i in test_images:
-        print(i.name)
+    err = []
+
+    for i in tqdm(test_images):
         data = i.load_x()
         pred = ae.inference(data)
-        pred = pred[0, :, :, :]
+        pred = np.clip((pred[0, :, :, :] + 0.5) * 255, 0, 255)
 
-        cv2.imwrite(os.path.join(results_folder, i.name[:-4] + ".png"), make_result_picture(data, pred))
+        data = cv2.resize(data, (pred.shape[1], pred.shape[0]), interpolation=cv2.INTER_CUBIC)
+        err.append(np.mean(np.abs(pred - data) / 255))
 
+        if np.random.randint(100) == 0:
+            cv2.imwrite(os.path.join(results_folder, i.name[:-4] + ".png"), make_result_picture(data, pred))
+
+    err = np.mean(err)
+    s = "[RESULTS]: MEA: {}".format(err)
+    print(s)
+    with open(os.path.join(mf, "report.txt"), "w") as f:
+        f.write(s)
 
 def parse_args():
     parser = argparse.ArgumentParser()

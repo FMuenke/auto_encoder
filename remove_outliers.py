@@ -166,7 +166,7 @@ def apply_umap():
 
 def main():
     ds_path = "/home/fmuenke/datasets/TS-DATA-GROUPED"
-    model_path = "/home/fmuenke/ai_models/AE-RES-ENC64-D4-R1"
+    model_path = "/home/fmuenke/ai_models/AE-RES50-ENC64-R2"
 
     get_data_sets(ds_path, model_path)
 

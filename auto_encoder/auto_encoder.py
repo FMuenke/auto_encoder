@@ -5,6 +5,7 @@ from tensorflow.keras import optimizers
 
 import pickle
 from tensorflow.keras.models import Model
+# from tensorflow.keras.optimizers.schedules import
 from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping, CSVLogger
 
 
@@ -48,6 +49,8 @@ class AutoEncoder:
         if "optimizer" in cfg.opt:
             if "adam" == cfg.opt["optimizer"]:
                 optimizer = optimizers.Adam(lr=cfg.opt["init_learning_rate"])
+            if "ada_delta" == cfg.opt["optimizer"]:
+                optimizer = optimizers.Adadelta()
         if optimizer is None:
             optimizer = optimizers.Adam(lr=cfg.opt["init_learning_rate"])
         self.optimizer = optimizer
