@@ -49,7 +49,7 @@ def main(args_):
         data = cv2.resize(data, (pred.shape[1], pred.shape[0]), interpolation=cv2.INTER_CUBIC)
         err.append(np.mean(np.abs(pred - data) / 255))
 
-        if np.random.randint(100) == 0:
+        if np.random.randint(10) == 0:
             cv2.imwrite(os.path.join(results_folder, i.name[:-4] + ".png"), make_result_picture(data, pred))
 
     err = np.mean(err)
@@ -57,6 +57,7 @@ def main(args_):
     print(s)
     with open(os.path.join(mf, "report.txt"), "w") as f:
         f.write(s)
+
 
 def parse_args():
     parser = argparse.ArgumentParser()

@@ -1,5 +1,6 @@
 import cv2
 import os
+import argparse
 import numpy as np
 from auto_encoder.data_set import DataSet
 from auto_encoder.auto_encoder import AutoEncoder
@@ -7,12 +8,9 @@ from auto_encoder.auto_encoder import AutoEncoder
 from auto_encoder.util import check_n_make_dir, save_dict, load_dict
 
 import pandas as pd
-from sklearn.decomposition import PCA
-from sklearn.ensemble import IsolationForest, RandomForestClassifier
+from sklearn.ensemble import IsolationForest, RandomForestClassifier, AdaBoostClassifier
+from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.neighbors import LocalOutlierFactor
-from sklearn.cluster import FeatureAgglomeration
-from sklearn.neural_network import MLPClassifier
-from sklearn.linear_model import LogisticRegression
 from umap import UMAP
 
 from sklearn.metrics import classification_report, accuracy_score, f1_score, roc_auc_score
@@ -25,16 +23,7 @@ from tqdm import tqdm
 
 class Config:
     def __init__(self):
-        self.opt = {
-            "backbone": "basic",
-            "loss": "mse",
-            "optimizer": "lazy_adam",
-            "epochs": 10000,
-            "batch_size": 16,
-            "embedding_size": 512,
-            "init_learning_rate": 1e-5,
-            "input_shape": [256, 256, 3],
-        }
+        self.opt = {}
 
 
 def make_result_picture(img, res):
@@ -45,167 +34,141 @@ def make_result_picture(img, res):
     return complete
 
 
-def load_data_set(model, path_to_data, class_mapping=None, cls_to_consider=None):
+def load_data_set(model, path_to_data, known_classes, only_known_classes):
     ds_test = DataSet(path_to_data)
     ds_test.load()
     images = ds_test.get_data()
 
+    class_mapping = {cls: i+1 for i, cls in enumerate(known_classes)}
+
     data_x = None
     data_y = []
-    data_frame = {"class_name": [], "cls_id": []}
-    if class_mapping is None:
-        class_mapping = {}
-
+    data_frame = {"class_name": [], "status": [], "status_id": []}
     for i in tqdm(images):
         cls = i.load_y()
-        if cls_to_consider is not None:
-            if cls not in cls_to_consider:
-                continue
+        if cls not in known_classes and only_known_classes:
+            continue
+
+        if cls not in known_classes:
+            data_frame["status"].append("unknown")
+            data_frame["status_id"].append(0)
+            data_y.append(0)
+        else:
+            data_frame["status"].append("known")
+            data_frame["status_id"].append(1)
+            data_y.append(class_mapping[cls])
         data = i.load_x()
-        if cls not in class_mapping:
-            class_mapping[cls] = len(class_mapping)
         pred = model.inference(data)
 
         if data_x is None:
             data_x = pred
         else:
             data_x = np.concatenate([data_x, pred], axis=0)
-        data_y.append(class_mapping[cls])
 
         data_frame["class_name"].append(cls)
-        data_frame["cls_id"].append(class_mapping[cls])
+    data_frame["cls_id"] = data_y
     data_y = np.array(data_y)
-    return data_x, data_y, data_frame, class_mapping
+    return data_x, data_y, data_frame
 
 
-def get_data_sets(ds_path, model_path):
+def get_data_sets(ds_path_train, ds_path_test, model_path):
     cfg = Config()
     if os.path.isfile(os.path.join(model_path, "opt.json")):
         cfg.opt = load_dict(os.path.join(model_path, "opt.json"))
     ae = AutoEncoder(model_path, cfg)
     ae.build(False, add_decoder=False)
 
-    x_train, y_train, data_frame_train, class_mapping = load_data_set(ae, os.path.join(ds_path, "train", "known"))
+    known_classes = ["manhole", "stormdrain"]
+
+    x_train, y_train, data_frame_train = load_data_set(ae, ds_path_train, known_classes, only_known_classes=True)
     np.save(os.path.join(model_path, "x_train.npy"), x_train)
     np.save(os.path.join(model_path, "y_train.npy"), y_train)
     save_dict(data_frame_train, os.path.join(model_path, "data_frame_train.json"))
-    save_dict(class_mapping, os.path.join(model_path, "class_mapping_train.json"))
 
-    x_test, y_test, data_frame_test, class_mapping = load_data_set(ae, os.path.join(ds_path, "test"), class_mapping)
+    x_test, y_test, data_frame_test = load_data_set(ae, ds_path_test, known_classes, only_known_classes=False)
     np.save(os.path.join(model_path, "x_test.npy"), x_test)
     np.save(os.path.join(model_path, "y_test.npy"), y_test)
     save_dict(data_frame_test, os.path.join(model_path, "data_frame_test.json"))
-    save_dict(class_mapping, os.path.join(model_path, "class_mapping_test.json"))
 
 
-def mark_unknowns(data_frame, class_mapping):
-    known_cls = []
-    known_id = []
+def main(args_):
+    df = args_.dataset_folder
+    tf = args_.testset_folder
+    model_path = args_.model
 
-    for c in data_frame["class_name"]:
-        if c in class_mapping:
-            known_cls.append("known")
-            known_id.append(1)
-        else:
-            known_cls.append("unknown")
-            known_id.append(0)
-    return known_cls, np.array(known_id)
-
-
-def remove_outliers(x_train, y_train, x_test, y_test, class_mapping_train, data_frame_test):
-    print("[INFO] Fitting outlier removal...")
-    outlier_remover = IsolationForest(n_estimators=1000, n_jobs=-1)
-    nn_remover = LocalOutlierFactor(n_jobs=-1, novelty=True)
-    outlier_remover.fit(x_train)
-    nn_remover.fit(x_train)
-
-    unknown_cls, unknown_id = mark_unknowns(data_frame_test, class_mapping_train)
-
-    data_frame_test["unknown"] = unknown_cls
-
-    print("OUTLIER CLASSIFICATION REPORT")
-    outlier_score = outlier_remover.score_samples(x_test)
-    auroc = roc_auc_score(unknown_id, outlier_score)
-    print("[ISOLATION FORREST] ", 1 - auroc)
-    outlier_score = nn_remover.score_samples(x_test)
-    auroc = roc_auc_score(unknown_id, outlier_score)
-    print("[NN] ", auroc)
-
-
-def classify_knows(x_train, y_train, x_test, y_test, unknown_cls):
-    print("[INFO] Fitting classifier...")
-    classifier = LogisticRegression()
-    classifier.fit(x_train, y_train)
-
-    x_test_known = x_test[unknown_cls == "known", :]
-    y_test_known = y_test[unknown_cls == "known"]
-    y_pred = classifier.predict(x_test_known)
-    print("CLASSIFIER CLASSIFICATION REPORT [KNOWN SAMPLES] - F1-Score: {}".format(
-        f1_score(y_test_known, y_pred, average="weighted")))
-    print(classification_report(y_test_known, y_pred))
-
-
-def apply_umap():
-    dim_reducer = UMAP(n_components=2)
-    dim_reducer.fit(x_train)
-    x_t = dim_reducer.transform(x_train)
-    data_frame_train["x1"] = x_t[:, 0]
-    data_frame_train["x2"] = x_t[:, 1]
-
-    x_t = dim_reducer.transform(x_test)
-    data_frame_test["x1"] = x_t[:, 0]
-    data_frame_test["x2"] = x_t[:, 1]
-    data_frame_test["class_name"] = data_frame_test["class_name"]
-    data_frame_test["cls_id"] = y_test
-    data_frame_test = pd.DataFrame(data_frame_test)
-    fig, axes = plt.subplots(1, 2)
-    sns.displot(data_frame_test, x="x1", y="x2", hue="status", legend=True, kind="kde", ax=axes[0])
-    sns.displot(data_frame_test, x="x1", y="x2", hue="class_name", legend=False, kind="kde", ax=axes[1])
-    plt.show()
-
-
-def main():
-    ds_path = "/home/fmuenke/datasets/TS-DATA-GROUPED"
-    model_path = "/home/fmuenke/ai_models/AE-RES50-ENC64-R2"
-
-    get_data_sets(ds_path, model_path)
+    get_data_sets(df, tf, model_path)
 
     x_train = np.load(os.path.join(model_path, "x_train.npy"))
     y_train = np.load(os.path.join(model_path, "y_train.npy"))
     data_frame_train = load_dict(os.path.join(model_path, "data_frame_train.json"))
-    class_mapping_train = load_dict(os.path.join(model_path, "class_mapping_train.json"))
 
     x_test = np.load(os.path.join(model_path, "x_test.npy"))
     y_test = np.load(os.path.join(model_path, "y_test.npy"))
     data_frame_test = load_dict(os.path.join(model_path, "data_frame_test.json"))
 
-    unknown_cls_train, unknown_id_train = mark_unknowns(data_frame_train, class_mapping_train)
-    unknown_cls, unknown_id = mark_unknowns(data_frame_test, class_mapping_train)
-    data_frame_test["status"] = unknown_cls
-
-    remove_outliers(x_train, y_train, x_test, y_test, class_mapping_train, data_frame_test)
-    # classify_knows(x_train, y_train, x_test, y_test, unknown_cls)
-
-    dim_reducer = UMAP(n_components=4)
-    dim_reducer.fit(x_train)
-    x_t = dim_reducer.transform(x_train)
-    data_frame_train["x1"] = x_t[:, 0]
-    data_frame_train["x2"] = x_t[:, 1]
-
-    x_t = dim_reducer.transform(x_test)
-    data_frame_test["x1"] = x_t[:, 0]
-    data_frame_test["x2"] = x_t[:, 1]
-    data_frame_test["x3"] = x_t[:, 2]
-    data_frame_test["x4"] = x_t[:, 3]
-    data_frame_test["class_name"] = data_frame_test["class_name"]
-    data_frame_test["cls_id"] = y_test
+    data_frame_train = pd.DataFrame(data_frame_train)
     data_frame_test = pd.DataFrame(data_frame_test)
-    ### PAIRPLOTS?!?!?!
-    # sns.displot(data=data_frame_test, x="x1", y="x2", hue="status", legend=True, kind="kde")
-    # sns.displot(data=data_frame_test, x="x1", y="x2", hue="class_name", legend=False, kind="kde")
-    sns.pairplot(data=data_frame_test, vars=["x1", "x2", "x3", "x4"], hue="status", kind="kde")
+
+    print("[INFO] CLASSIFICATION")
+    rf_classifier = RandomForestClassifier(n_jobs=-1)
+    rf_classifier.fit(x_train, y_train)
+    proba = rf_classifier.predict_log_proba(x_test)
+    max_proba = np.max(proba, axis=1)
+    auroc = roc_auc_score(data_frame_test["status_id"], max_proba)
+    print("[RANDOM FORREST CLASSIFIER] ", auroc)
+
+    print("[INFO] Fitting outlier removal...")
+    iso_remover = IsolationForest(n_jobs=-1)
+    lof_remover = LocalOutlierFactor(n_jobs=-1, novelty=True)
+    iso_remover.fit(x_train)
+    lof_remover.fit(x_train)
+
+    print("OUTLIER CLASSIFICATION REPORT")
+    outlier_score = iso_remover.score_samples(x_test)
+    auroc = roc_auc_score(data_frame_test["status_id"], outlier_score)
+    print("[ISOLATION FORREST] ", auroc)
+    outlier_score = lof_remover.score_samples(x_test)
+    auroc = roc_auc_score(data_frame_test["status_id"], outlier_score)
+    print("[LOCAL OUTLIER FACTOR] ", auroc)
+
+    print("[INFO] UMAP")
+    projection = UMAP(n_components=4)
+    projection.fit(x_train)
+
+    x_trans_test = projection.transform(x_test)
+    plt_df = pd.DataFrame({
+        "x1": x_trans_test[:, 0],
+        "x2": x_trans_test[:, 1],
+        "x3": x_trans_test[:, 2],
+        "x4": x_trans_test[:, 3],
+        "status": data_frame_test["status"],
+        "class_name": data_frame_test["class_name"],
+    })
+
+    sns.pairplot(data=plt_df, vars=["x1", "x2", "x3", "x4"], hue="class_name", kind="kde")
     plt.show()
 
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--dataset_folder",
+        "-df",
+        help="Path to directory with dataset",
+    )
+    parser.add_argument(
+        "--model",
+        "-m",
+        help="Path to model",
+    )
+    parser.add_argument(
+        "--testset_folder",
+        "-tf",
+        help="Path to directory with dataset",
+    )
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    main()
+    args = parse_args()
+    main(args)
