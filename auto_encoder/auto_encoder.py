@@ -140,7 +140,7 @@ class AutoEncoder:
             validation_data=validation_generator,
             callbacks=callback_list,
             epochs=self.epochs,
-            verbose=1,
+            verbose=0,
         )
         with open(os.path.join(self.model_folder, "training_history.pkl"), 'wb') as file_pi:
             pickle.dump(history.history, file_pi)

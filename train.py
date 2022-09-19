@@ -14,8 +14,8 @@ class Config:
     def __init__(self):
         self.opt = {
             "backbone": "resnet",
-            "resolution": 2,
-            "depth": 4,
+            "resolution": 8,
+            "depth": 2,
             "loss": "mse",
             "optimizer": "adam",
             "batch_size": 64,
