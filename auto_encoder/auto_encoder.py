@@ -129,7 +129,7 @@ class AutoEncoder:
         )
 
         patience = 64
-        reduce_lr = ReduceLROnPlateau(factor=0.5, verbose=1, patience=int(patience*0.5))
+        reduce_lr = ReduceLROnPlateau(verbose=1, patience=int(patience*0.5))
         early_stop = EarlyStopping(monitor="val_loss", patience=patience, verbose=1)
         csv_logger = CSVLogger(filename=os.path.join(self.model_folder, "logs.csv"))
 

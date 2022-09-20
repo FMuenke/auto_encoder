@@ -14,14 +14,14 @@ class Config:
     def __init__(self):
         self.opt = {
             "backbone": "resnet",
-            "resolution": 8,
+            "resolution": 2,
             "depth": 2,
             "loss": "mse",
             "optimizer": "adam",
             "batch_size": 64,
             "embedding_size": 64,
             "init_learning_rate": 1e-3,
-            "input_shape": [128, 128, 3],
+            "input_shape": [32, 32, 3],
         }
 
 

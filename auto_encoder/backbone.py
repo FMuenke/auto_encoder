@@ -186,6 +186,19 @@ def basic_auto_encoder(input_shape, embedding_size, depth, resolution):
     return input_layer, bottleneck, output
 
 
+def fully_connected_auto_encoder(input_shape, embedding_size, depth, resolution):
+    input_layer = layers.Input(batch_shape=(None, input_shape[0], input_shape[1], input_shape[2]))
+    n_inputs = int(input_shape[0] * input_shape[1] * input_shape[2])
+    n_spatial = int(input_shape[0] * input_shape[1])
+    x = layers.Flatten()(input_layer)
+    x = layers.Dense(n_spatial / 4, name="enc_1")(x)
+    bottleneck = layers.Dense(embedding_size, name="bootleneck")(x)
+    x = layers.Dense(n_spatial / 4, name="dec_1")(bottleneck)
+    x = layers.Dense(n_inputs)(x)
+    output = layers.Reshape([int(input_shape[0]), int(input_shape[1]), input_shape[2]], name='Reshape_Layer')(x)
+    return input_layer, bottleneck, output
+
+
 class Backbone:
     def __init__(self, backbone_type, embedding_size, depth, resolution, loss_type="mse", weights="imagenet"):
         self.backbone_type = backbone_type
@@ -226,6 +239,13 @@ class Backbone:
                 embedding_size=self.embedding_size,
                 depth=self.depth,
                 resolution=self.resolution
+            )
+        elif self.backbone_type in ["fully_connected"]:
+            x_input, bottleneck, output = fully_connected_auto_encoder(
+                input_shape=input_shape,
+                embedding_size=self.embedding_size,
+                depth=self.depth,
+                resolution=self.resolution,
             )
         else:
             raise ValueError("{} Backbone was not recognised".format(self.backbone_type))
