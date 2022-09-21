@@ -5,6 +5,7 @@ from tensorflow.keras import optimizers
 
 import pickle
 from tensorflow.keras.models import Model
+from tensorflow.keras.experimental import CosineDecayRestarts
 # from tensorflow.keras.optimizers.schedules import
 from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping, CSVLogger
 
@@ -35,6 +36,7 @@ class AutoEncoder:
     def __init__(self, model_folder, cfg):
         self.model_folder = model_folder
 
+        self.init_learning_rate = cfg.opt["init_learning_rate"]
         self.input_shape = cfg.opt["input_shape"]
         self.backbone = cfg.opt["backbone"]
         self.embedding_size = cfg.opt["embedding_size"]
@@ -130,6 +132,7 @@ class AutoEncoder:
 
         patience = 64
         reduce_lr = ReduceLROnPlateau(verbose=1, patience=int(patience*0.5))
+        # reduce_lr = CosineDecayRestarts(initial_learning_rate=self.init_learning_rate, first_decay_steps=1000)
         early_stop = EarlyStopping(monitor="val_loss", patience=patience, verbose=1)
         csv_logger = CSVLogger(filename=os.path.join(self.model_folder, "logs.csv"))
 
@@ -140,7 +143,7 @@ class AutoEncoder:
             validation_data=validation_generator,
             callbacks=callback_list,
             epochs=self.epochs,
-            verbose=0,
+            verbose=1,
         )
         with open(os.path.join(self.model_folder, "training_history.pkl"), 'wb') as file_pi:
             pickle.dump(history.history, file_pi)

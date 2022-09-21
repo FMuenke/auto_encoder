@@ -215,7 +215,7 @@ def apply_cut_out(img):
 
 
 class Augmentations:
-    def __init__(self, flips=True, crop=True, rotation=True, noise=True, color=True, blur=True, cut_out=True):
+    def __init__(self, flips=True, crop=True, rotation=True, noise=True, color=True, blur=True, cut_out=False):
         self.flips = flips
         self.rotation = rotation
         self.crop = crop
