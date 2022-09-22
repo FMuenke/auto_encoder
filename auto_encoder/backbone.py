@@ -86,7 +86,6 @@ class Backbone:
             x_input, bottleneck, output = resnet50_auto_encoder(
                 input_shape=input_shape,
                 embedding_size=self.embedding_size,
-                resolution=self.resolution
             )
         elif self.backbone_type in ["basic"]:
             x_input, bottleneck, output = basic_auto_encoder(

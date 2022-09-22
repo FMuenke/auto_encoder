@@ -5,8 +5,6 @@ from tensorflow.keras import optimizers
 
 import pickle
 from tensorflow.keras.models import Model
-from tensorflow.keras.experimental import CosineDecayRestarts
-# from tensorflow.keras.optimizers.schedules import
 from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping, CSVLogger
 
 
