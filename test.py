@@ -37,7 +37,7 @@ def main(args_):
     results_folder = os.path.join(mf, "results")
     check_n_make_dir(results_folder, True)
 
-    ae = AutoEncoder(mf, cfg)
+    ae = VariationalAutoEncoder(mf, cfg)
     ae.build(False)
 
     err = []

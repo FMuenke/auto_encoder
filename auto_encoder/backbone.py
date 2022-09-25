@@ -75,7 +75,7 @@ class Backbone:
         return ["mse"]
 
     def build(self, input_shape, add_decoder=True):
-        if self.backbone_type in ["resnet"]:
+        if self.backbone_type in ["resnet", "residual"]:
             x_input, bottleneck, output = resnet_auto_encoder(
                 input_shape=input_shape,
                 embedding_size=self.embedding_size,

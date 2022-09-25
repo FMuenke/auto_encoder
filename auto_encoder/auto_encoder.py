@@ -32,6 +32,7 @@ from auto_encoder.util import prepare_input
 
 class AutoEncoder:
     def __init__(self, model_folder, cfg):
+        self.metric_to_track = "val_loss"
         self.model_folder = model_folder
 
         self.init_learning_rate = cfg.opt["init_learning_rate"]
@@ -122,16 +123,16 @@ class AutoEncoder:
 
         checkpoint = ModelCheckpoint(
             os.path.join(self.model_folder, "weights-final.hdf5"),
-            monitor="val_loss",
+            monitor=self.metric_to_track,
             verbose=1,
             save_best_only=True,
             mode="min",
         )
 
         patience = 64
-        reduce_lr = ReduceLROnPlateau(verbose=1, patience=int(patience*0.5))
+        reduce_lr = ReduceLROnPlateau(monitor=self.metric_to_track, verbose=1, patience=int(patience*0.5))
         # reduce_lr = CosineDecayRestarts(initial_learning_rate=self.init_learning_rate, first_decay_steps=1000)
-        early_stop = EarlyStopping(monitor="val_loss", patience=patience, verbose=1)
+        early_stop = EarlyStopping(monitor=self.metric_to_track, patience=patience, verbose=1)
         csv_logger = CSVLogger(filename=os.path.join(self.model_folder, "logs.csv"))
 
         callback_list = [checkpoint, reduce_lr, early_stop, csv_logger]
@@ -141,7 +142,7 @@ class AutoEncoder:
             validation_data=validation_generator,
             callbacks=callback_list,
             epochs=self.epochs,
-            verbose=0,
+            verbose=1,
         )
         with open(os.path.join(self.model_folder, "training_history.pkl"), 'wb') as file_pi:
             pickle.dump(history.history, file_pi)
