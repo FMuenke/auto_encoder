@@ -38,7 +38,6 @@ class DataGenerator(keras.utils.Sequence):
         tags_temp = [self.tag_set[k] for k in indexes]
 
         x, y = self.__data_generation(tags_temp)
-
         return x, y
 
     def on_epoch_end(self):
@@ -67,7 +66,6 @@ class DataGenerator(keras.utils.Sequence):
             x.append(img)
             y.append(tar)
 
-        x = np.array(x)
-        y = np.array(y)
-
+        x = np.array(x, dtype=np.float32)
+        y = np.array(y, dtype=np.float32)
         return x, y

@@ -31,12 +31,12 @@ def residual_auto_encoder(input_shape, embedding_size, depth, resolution, drop_r
 
     encoder = keras.Model(input_layer, [z_mean, z_log_var, z], name="encoder")
 
-    latent_inputs = keras.Input(shape=(embedding_size,))
+    # latent_inputs = keras.Input(shape=(embedding_size,))
 
     reshape_layer_dim = input_shape[0] / (2 ** depth)
     assert reshape_layer_dim in [2 ** x for x in [0, 1, 2, 3, 4, 5, 6]]
 
-    x = layers.Dense(int(reshape_layer_dim * reshape_layer_dim * 64), name='dense_1')(latent_inputs)
+    x = layers.Dense(int(reshape_layer_dim * reshape_layer_dim * 64), name='dense_1')(z)
     x = tf.reshape(x, [-1, int(reshape_layer_dim), int(reshape_layer_dim), 64], name='Reshape_Layer')
 
     for i in range(depth - 1):
@@ -48,6 +48,6 @@ def residual_auto_encoder(input_shape, embedding_size, depth, resolution, drop_r
         x = make_resnet_decoder_block(x, filters, ident=i + 1)
 
     output = layers.Conv2DTranspose(3, 3, 2, padding='same', activation='linear', name='conv_transpose_5')(x)
-    decoder = keras.Model(latent_inputs, output, name="decoder")
+    decoder = keras.Model(input_layer, output, name="decoder")
 
     return encoder, decoder

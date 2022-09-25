@@ -1,6 +1,5 @@
 
 from variational_auto_encoder.cnn_resnet import residual_auto_encoder
-from variational_auto_encoder.variational_auto_encoder_engine import VariationalAutoEncoderEngine
 
 
 class Backbone:
@@ -35,7 +34,7 @@ class Backbone:
             raise ValueError("{} Backbone was not recognised".format(self.backbone_type))
 
         if add_decoder:
-            return VariationalAutoEncoderEngine(encoder, decoder)
+            return decoder
         else:
             return encoder
 

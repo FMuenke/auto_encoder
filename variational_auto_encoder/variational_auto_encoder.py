@@ -14,10 +14,7 @@ class VariationalAutoEncoder(AutoEncoder):
             resolution=self.resolution,
             loss_type=self.loss_type
         )
-        x_input, y = backbone.build(self.input_shape, add_decoder=add_decoder)
-
-        self.model = Model(inputs=x_input, outputs=y)
-        # print(self.model.summary())
+        self.model = backbone.build(self.input_shape, add_decoder=add_decoder)
 
         self.load()
         if compile_model:

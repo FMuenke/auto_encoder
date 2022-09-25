@@ -1,8 +1,8 @@
 import tensorflow as tf
-from tensorflow import keras
+from tensorflow.keras import layers
 
 
-class Sampling(keras.layers.Layer):
+class Sampling(layers.Layer):
     """Uses (z_mean, z_log_var) to sample z, the vector encoding a digit."""
 
     def call(self, inputs):
