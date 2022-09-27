@@ -8,11 +8,12 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping, CSVLogger
 
 
-from auto_encoder.backbone import Backbone
+from auto_encoder.residual import residual_auto_encoder
+from auto_encoder.fully_connected import fully_connected_auto_encoder
 from auto_encoder.data_generator import DataGenerator
 
 from auto_encoder.util import check_n_make_dir
-
+from auto_encoder.util import prepare_input
 
 try:
     physical_devices = tf.config.experimental.list_physical_devices('GPU')
@@ -27,9 +28,6 @@ except Exception as e:
     print("ATTENTION: GPU IS NOT USED....")
 
 
-from auto_encoder.util import prepare_input
-
-
 class AutoEncoder:
     def __init__(self, model_folder, cfg):
         self.metric_to_track = "val_loss"
@@ -41,19 +39,27 @@ class AutoEncoder:
         self.embedding_size = cfg.opt["embedding_size"]
         self.depth = cfg.opt["depth"]
         self.resolution = cfg.opt["resolution"]
-        if "loss" in cfg.opt:
-            self.loss_type = cfg.opt["loss"]
+
+        if "embedding_type" not in cfg.opt:
+            cfg.opt["embedding_type"] = "flatten"
+        if "embedding_activation" not in cfg.opt:
+            cfg.opt["embedding_activation"] = "linear"
+        if "drop_rate" not in cfg.opt:
+            cfg.opt["drop_rate"] = 0.0
+        self.embedding_type = cfg.opt["embedding_type"]
+        self.embedding_activation = cfg.opt["embedding_activation"]
+        self.drop_rate = cfg.opt["drop_rate"]
 
         self.model = None
 
         optimizer = None
         if "optimizer" in cfg.opt:
             if "adam" == cfg.opt["optimizer"]:
-                optimizer = optimizers.Adam(lr=cfg.opt["init_learning_rate"])
+                optimizer = optimizers.Adam(learning_rate=cfg.opt["init_learning_rate"])
             if "ada_delta" == cfg.opt["optimizer"]:
                 optimizer = optimizers.Adadelta()
         if optimizer is None:
-            optimizer = optimizers.Adam(lr=cfg.opt["init_learning_rate"])
+            optimizer = optimizers.Adam(learning_rate=cfg.opt["init_learning_rate"])
         self.optimizer = optimizer
 
         if "batch_size" in cfg.opt:
@@ -69,34 +75,52 @@ class AutoEncoder:
         res = np.array(res)
         return res
 
+    def get_backbone(self, add_decoder):
+        if self.backbone in ["resnet", "residual"]:
+            x_input, bottleneck, output = residual_auto_encoder(
+                input_shape=self.input_shape,
+                embedding_size=self.embedding_size,
+                embedding_type=self.embedding_type,
+                embedding_activation=self.embedding_activation,
+                depth=self.depth,
+                resolution=self.resolution,
+                drop_rate=self.drop_rate,
+            )
+        elif self.backbone in ["fully_connected", "fc"]:
+            x_input, bottleneck, output = fully_connected_auto_encoder(
+                input_shape=self.input_shape,
+                embedding_size=self.embedding_size,
+                embedding_activation=self.embedding_activation,
+                drop_rate=self.drop_rate
+            )
+        else:
+            raise ValueError("{} Backbone was not recognised".format(self.backbone))
+
+        if add_decoder:
+            return x_input, output
+        else:
+            return x_input, bottleneck
+
     def build(self, compile_model=True, add_decoder=True):
-        backbone = Backbone(
-            self.backbone,
-            embedding_size=self.embedding_size,
-            depth=self.depth,
-            resolution=self.resolution,
-            loss_type=self.loss_type
-        )
-        x_input, y = backbone.build(self.input_shape, add_decoder=add_decoder)
+        x_input, y = self.get_backbone(add_decoder)
 
         self.model = Model(inputs=x_input, outputs=y)
-        # print(self.model.summary())
-
         self.load()
         if compile_model:
-            self.model.compile(loss=backbone.loss(), optimizer=self.optimizer, metrics=backbone.metric())
+            self.model.compile(loss="mean_squared_error", optimizer=self.optimizer, metrics=["mse"])
 
     def load(self):
         model_path = None
-        if os.path.isdir(self.model_folder):
+        if os.path.isfile(os.path.join(self.model_folder, "weights-final.hdf5")):
+            model_path = os.path.join(self.model_folder, "weights-final.hdf5")
+        elif os.path.isdir(self.model_folder):
             pot_models = sorted(os.listdir(self.model_folder))
             for model in pot_models:
                 if model.lower().endswith((".hdf5", ".h5")):
                     model_path = os.path.join(self.model_folder, model)
-            if model_path is not None:
-                print("[INFO] Model-Weights are loaded from: {}".format(model_path))
-                self.model.load_weights(model_path, by_name=True)
-
+        if model_path is not None:
+            print("[INFO] Model-Weights are loaded from: {}".format(model_path))
+            self.model.load_weights(model_path, by_name=True)
         else:
             print("[INFO] No Weights were found")
 
@@ -127,9 +151,10 @@ class AutoEncoder:
             verbose=1,
             save_best_only=True,
             mode="min",
+            save_weights_only=True
         )
 
-        patience = 64
+        patience = 128
         reduce_lr = ReduceLROnPlateau(monitor=self.metric_to_track, verbose=1, patience=int(patience*0.5))
         # reduce_lr = CosineDecayRestarts(initial_learning_rate=self.init_learning_rate, first_decay_steps=1000)
         early_stop = EarlyStopping(monitor=self.metric_to_track, patience=patience, verbose=1)
@@ -142,7 +167,7 @@ class AutoEncoder:
             validation_data=validation_generator,
             callbacks=callback_list,
             epochs=self.epochs,
-            verbose=1,
+            verbose=0,
         )
         with open(os.path.join(self.model_folder, "training_history.pkl"), 'wb') as file_pi:
             pickle.dump(history.history, file_pi)

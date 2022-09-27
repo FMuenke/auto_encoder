@@ -2,7 +2,6 @@ import os
 import tensorflow as tf
 from auto_encoder.data_set import DataSet
 from auto_encoder.auto_encoder import AutoEncoder
-from variational_auto_encoder.variational_auto_encoder import VariationalAutoEncoder
 
 from auto_encoder.augmentations import Augmentations
 
@@ -16,15 +15,17 @@ print("TF VERSION: ", tf.__version__)
 class Config:
     def __init__(self):
         self.opt = {
-            "backbone": "residual",
+            "backbone": "fully_connected",
             "resolution": 4,
             "depth": 4,
-            "loss": "mse",
             "optimizer": "adam",
             "batch_size": 64,
             "embedding_size": 128,
+            "embedding_type": "glob_avg",
+            "embedding_activation": "linear",
             "init_learning_rate": 1e-3,
             "input_shape": [64, 64, 3],
+            "tf-version": tf.__version__,
         }
 
 

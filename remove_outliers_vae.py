@@ -3,17 +3,16 @@ import os
 import argparse
 import numpy as np
 from auto_encoder.data_set import DataSet
-from auto_encoder.auto_encoder import AutoEncoder
+from auto_encoder.variational_auto_encoder import VariationalAutoEncoder
 
-from auto_encoder.util import check_n_make_dir, save_dict, load_dict
+from auto_encoder.util import save_dict, load_dict
 
 import pandas as pd
-from sklearn.ensemble import IsolationForest, RandomForestClassifier, AdaBoostClassifier
-from sklearn.gaussian_process import GaussianProcessClassifier
+from sklearn.ensemble import IsolationForest, RandomForestClassifier
 from sklearn.neighbors import LocalOutlierFactor
 from umap import UMAP
 
-from sklearn.metrics import classification_report, accuracy_score, f1_score, roc_auc_score
+from sklearn.metrics import f1_score, roc_auc_score
 
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -58,7 +57,7 @@ def load_data_set(model, path_to_data, known_classes, only_known_classes):
             data_frame["status_id"].append(1)
             data_y.append(class_mapping[cls])
         data = i.load_x()
-        pred = model.inference(data)
+        pred = model.encode(data)
 
         if data_x is None:
             data_x = pred
@@ -75,7 +74,7 @@ def get_data_sets(ds_path_train, ds_path_test, model_path):
     cfg = Config()
     if os.path.isfile(os.path.join(model_path, "opt.json")):
         cfg.opt = load_dict(os.path.join(model_path, "opt.json"))
-    ae = AutoEncoder(model_path, cfg)
+    ae = VariationalAutoEncoder(model_path, cfg)
     ae.build(False, add_decoder=False)
 
     known_classes = ["manhole", "stormdrain"]
@@ -153,7 +152,6 @@ def main(args_):
 
     sns.pairplot(data=plt_df, vars=["x1", "x2", "x3", "x4"], hue="class_name", kind="kde")
     plt.savefig(os.path.join(model_path, "umap-dist.png"))
-    plt.show()
 
 
 def parse_args():
