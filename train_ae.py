@@ -15,7 +15,7 @@ print("TF VERSION: ", tf.__version__)
 class Config:
     def __init__(self):
         self.opt = {
-            "backbone": "fully_connected",
+            "backbone": "residual",
             "resolution": 4,
             "depth": 4,
             "optimizer": "adam",
@@ -23,8 +23,9 @@ class Config:
             "embedding_size": 128,
             "embedding_type": "glob_avg",
             "embedding_activation": "linear",
+            "drop_rate": 0.25,
             "init_learning_rate": 1e-3,
-            "input_shape": [64, 64, 3],
+            "input_shape": [128, 128, 3],
             "tf-version": tf.__version__,
         }
 

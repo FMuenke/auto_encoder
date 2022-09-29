@@ -3,12 +3,21 @@ import os
 import argparse
 import numpy as np
 from auto_encoder.data_set import DataSet
-from auto_encoder.auto_encoder import AutoEncoder
+from auto_encoder.util import prepare_input
+from auto_encoder.residual import residual_xood_feature_extractor
 
 from auto_encoder.util import check_n_make_dir, save_dict, load_dict
 
 import pandas as pd
-from auto_encoder.outlier_removal import eval_outlier_removal
+from sklearn.ensemble import IsolationForest, RandomForestClassifier, AdaBoostClassifier
+from sklearn.gaussian_process import GaussianProcessClassifier
+from sklearn.neighbors import LocalOutlierFactor
+from umap import UMAP
+
+from sklearn.metrics import classification_report, accuracy_score, f1_score, roc_auc_score
+
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 from tqdm import tqdm
 
@@ -50,7 +59,9 @@ def load_data_set(model, path_to_data, known_classes, only_known_classes):
             data_frame["status_id"].append(1)
             data_y.append(class_mapping[cls])
         data = i.load_x()
-        pred = model.inference(data)
+        data = prepare_input(data, [128, 128, 3])
+        data = np.expand_dims(data, axis=0)
+        pred = model.predict_on_batch(data)
 
         if data_x is None:
             data_x = pred
@@ -67,8 +78,11 @@ def get_data_sets(ds_path_train, ds_path_test, model_path):
     cfg = Config()
     if os.path.isfile(os.path.join(model_path, "opt.json")):
         cfg.opt = load_dict(os.path.join(model_path, "opt.json"))
-    ae = AutoEncoder(model_path, cfg)
-    ae.build(False, add_decoder=False)
+    ae = residual_xood_feature_extractor(
+        input_shape=cfg.opt["input_shape"],
+        depth=cfg.opt["depth"],
+        resolution=cfg.opt["resolution"],
+    )
 
     known_classes = ["manhole", "stormdrain"]
 
@@ -101,7 +115,50 @@ def main(args_):
     data_frame_train = pd.DataFrame(data_frame_train)
     data_frame_test = pd.DataFrame(data_frame_test)
 
-    eval_outlier_removal(x_train, y_train, x_test, y_test, data_frame_test, model_path)
+    s = ""
+
+    s += "[INFO] CLASSIFICATION\n"
+    rf_classifier = RandomForestClassifier(n_jobs=-1)
+    rf_classifier.fit(x_train, y_train)
+    y_cls_only = rf_classifier.predict(x_test[y_test != 0, :])
+    s += "[RANDOM FORREST CLASSIFIER - F1-SCORE] {}\n".format(f1_score(y_test[y_test != 0], y_cls_only))
+
+    proba = rf_classifier.predict_log_proba(x_test)
+    max_proba = np.max(proba, axis=1)
+    s += "[RANDOM FORREST CLASSIFIER - AUROC] {}\n".format(roc_auc_score(data_frame_test["status_id"], max_proba))
+
+    s += "\n[INFO] Fitting outlier removal...\n"
+    iso_remover = IsolationForest(n_jobs=-1)
+    lof_remover = LocalOutlierFactor(n_jobs=-1, novelty=True)
+    iso_remover.fit(x_train)
+    lof_remover.fit(x_train)
+
+    s += "OUTLIER CLASSIFICATION REPORT\n"
+    outlier_score = iso_remover.score_samples(x_test)
+    s += "[ISOLATION FORREST] {}\n".format(roc_auc_score(data_frame_test["status_id"], outlier_score))
+    outlier_score = lof_remover.score_samples(x_test)
+    s += "[LOCAL OUTLIER FACTOR] {}\n".format(roc_auc_score(data_frame_test["status_id"], outlier_score))
+
+    print(s)
+    with open(os.path.join(model_path, "outlier-results.txt"), "w") as f:
+        f.write(s)
+
+    print("[INFO] UMAP")
+    projection = UMAP(n_components=4)
+    projection.fit(x_train)
+
+    x_trans_test = projection.transform(x_test)
+    plt_df = pd.DataFrame({
+        "x1": x_trans_test[:, 0],
+        "x2": x_trans_test[:, 1],
+        "x3": x_trans_test[:, 2],
+        "x4": x_trans_test[:, 3],
+        "status": data_frame_test["status"],
+        "class_name": data_frame_test["class_name"],
+    })
+
+    sns.pairplot(data=plt_df, vars=["x1", "x2", "x3", "x4"], hue="class_name", kind="kde")
+    plt.savefig(os.path.join(model_path, "umap-dist.png"))
 
 
 def parse_args():
