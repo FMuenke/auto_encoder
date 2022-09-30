@@ -65,7 +65,7 @@ def eval_outlier_removal(x_train, y_train, x_test, y_test, data_frame_test, save
         [RandomForestClassifier(n_jobs=-1, n_estimators=50), "RANDOM FORREST (50) CLASSIFIER"],
         [RandomForestClassifier(n_jobs=-1), "RANDOM FORREST (100) CLASSIFIER"],
         [RandomForestClassifier(n_jobs=-1, n_estimators=200), "RANDOM FORREST (200) CLASSIFIER"],
-        [GaussianProcessClassifier((1.0 * kernels.RBF(1.0))), "GAUSSIAN PROCESS CLASSIFIER"],
+        [GaussianProcessClassifier((1.0 * kernels.RBF(1.0)), n_jobs=-1), "GAUSSIAN PROCESS CLASSIFIER"],
         [MLPClassifier(), "MLP (100) CLASSIFIER"],
         [MLPClassifier(hidden_layer_sizes=(256, 128, )), "MLP (256, 128) CLASSIFIER"],
         [KNeighborsClassifier(n_jobs=-1, n_neighbors=5), "KNN (5) CLASSIFIER"],
@@ -78,9 +78,12 @@ def eval_outlier_removal(x_train, y_train, x_test, y_test, data_frame_test, save
     s += "\n[INFO] Fitting outlier removal...\n"
 
     ood_list = [
-        [IsolationForest(n_jobs=-1, contamination=0.01), "ISOLATION FORREST"],
-        [LocalOutlierFactor(n_jobs=-1, novelty=True, contamination=0.01), "LOCAL OUTLIER FACTOR"],
-        [EllipticEnvelope(contamination=0.01), "ELLIPTIC ENVELOPE"]
+        [IsolationForest(n_jobs=-1, contamination=0.01), "ISOLATION FORREST (0.1)"],
+        [LocalOutlierFactor(n_jobs=-1, novelty=True, contamination=0.01), "LOCAL OUTLIER FACTOR (0.1)"],
+        [EllipticEnvelope(contamination=0.01), "ELLIPTIC ENVELOPE (0.1)"],
+        [IsolationForest(n_jobs=-1, contamination=0.25), "ISOLATION FORREST (0.25)"],
+        [LocalOutlierFactor(n_jobs=-1, novelty=True, contamination=0.25), "LOCAL OUTLIER FACTOR (0.25)"],
+        [EllipticEnvelope(contamination=0.25), "ELLIPTIC ENVELOPE (0.25)"]
     ]
 
     for ood, ood_id in ood_list:
