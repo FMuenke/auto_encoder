@@ -70,7 +70,7 @@ def get_data_sets(ds_path_train, ds_path_test, model_path):
     ae = AutoEncoder(model_path, cfg)
     ae.build(False, add_decoder=False)
 
-    known_classes = ["manhole", "stormdrain"]
+    known_classes = ["manhole", "storm_drain"]
 
     x_train, y_train, data_frame_train = load_data_set(ae, ds_path_train, known_classes, only_known_classes=True)
     np.save(os.path.join(model_path, "x_train.npy"), x_train)
