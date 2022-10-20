@@ -15,7 +15,7 @@ print("TF VERSION: ", tf.__version__)
 class Config:
     def __init__(self):
         self.opt = {
-            "backbone": "residual",
+            "backbone": "asym-residual",
             "resolution": 4,
             "depth": 4,
             "optimizer": "adam",
@@ -25,7 +25,7 @@ class Config:
             "embedding_activation": "linear",
             "drop_rate": 0.75,
             "init_learning_rate": 1e-3,
-            "input_shape": [128, 128, 3],
+            "input_shape": [64, 64, 3],
             "tf-version": tf.__version__,
         }
 
