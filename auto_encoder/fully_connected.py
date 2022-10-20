@@ -41,7 +41,7 @@ def fully_connected_auto_encoder(input_shape, embedding_size, embedding_activati
     return input_layer, bottleneck, output
 
 
-def residual_fully_connected_auto_encoder(input_shape, embedding_size):
+def variational_fully_connected_auto_encoder(input_shape, embedding_size):
     input_layer = layers.Input(batch_shape=(None, input_shape[0], input_shape[1], input_shape[2]))
     n_inputs = int(input_shape[0] * input_shape[1] * input_shape[2])
     n_spatial = int(input_shape[0] * input_shape[1])

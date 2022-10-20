@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 from auto_encoder.auto_encoder import AutoEncoder
 from auto_encoder.residual import residual_variational_auto_encoder
-from auto_encoder.fully_connected import residual_fully_connected_auto_encoder
+from auto_encoder.fully_connected import variational_fully_connected_auto_encoder
 from auto_encoder.variational_auto_encoder_engine import VariationalAutoEncoderEngine
 
 from auto_encoder.util import prepare_input
@@ -21,11 +21,14 @@ class VariationalAutoEncoder(AutoEncoder):
             encoder, decoder = residual_variational_auto_encoder(
                 input_shape=self.input_shape,
                 embedding_size=self.embedding_size,
+                embedding_type=self.embedding_type,
+                embedding_activation=self.embedding_activation,
                 depth=self.depth,
-                resolution=self.resolution
+                resolution=self.resolution,
+                drop_rate=self.drop_rate,
             )
         elif self.backbone in ["fully_connected", "fc"]:
-            encoder, decoder = residual_fully_connected_auto_encoder(
+            encoder, decoder = variational_fully_connected_auto_encoder(
                 input_shape=self.input_shape,
                 embedding_size=self.embedding_size,
             )

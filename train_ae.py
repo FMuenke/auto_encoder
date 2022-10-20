@@ -23,7 +23,7 @@ class Config:
             "embedding_size": 128,
             "embedding_type": "glob_avg",
             "embedding_activation": "linear",
-            "drop_rate": 0.25,
+            "drop_rate": 0.75,
             "init_learning_rate": 1e-3,
             "input_shape": [128, 128, 3],
             "tf-version": tf.__version__,

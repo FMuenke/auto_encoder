@@ -178,18 +178,31 @@ def residual_decoder(
     return keras.Model(latent_inputs, output)
 
 
-def residual_variational_auto_encoder(input_shape, embedding_size, depth, resolution):
+def residual_variational_auto_encoder(
+        input_shape,
+        embedding_size,
+        embedding_type,
+        embedding_activation,
+        depth,
+        resolution,
+        drop_rate=0.25
+):
     input_sizes = {512: 0, 256: 0, 128: 0, 64: 0, 32: 0, }
     assert input_shape[0] == input_shape[1], "Only Squared Inputs! - {} / {} -".format(input_shape[0], input_shape[1])
     assert input_shape[0] in input_sizes, "Input Size is not supported ({})".format(input_shape[0])
 
     input_layer = layers.Input(batch_shape=(None, input_shape[0], input_shape[1], input_shape[2]))
 
-    x = input_layer
-
     x = make_encoder_stack(input_layer, depth, resolution)
 
-    latent_flat = layers.Flatten()(x)
+    emb = Embedding(
+        embedding_size=embedding_size,
+        embedding_type=embedding_type,
+        activation=embedding_activation,
+        drop_rate=drop_rate
+    )
+
+    latent_flat = emb.build(x)
 
     z_mean = layers.Dense(embedding_size, name="z_mean")(latent_flat)
     z_log_var = layers.Dense(embedding_size, name="z_log_var")(latent_flat)

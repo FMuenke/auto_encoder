@@ -20,10 +20,13 @@ class Config:
             "depth": 4,
             "loss": "mse",
             "optimizer": "adam",
+            "embedding_type": "glob_avg",
+            "embedding_activation": "linear",
             "batch_size": 64,
             "embedding_size": 256,
             "init_learning_rate": 1e-3,
             "input_shape": [128, 128, 3],
+            "tf-version": tf.__version__,
         }
 
 
