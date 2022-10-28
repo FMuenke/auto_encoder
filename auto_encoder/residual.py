@@ -78,9 +78,8 @@ def make_resnet_decoder_block(x, filters, ident, upsample=True):
     return out
 
 
-def make_encoder_stack(input_layer, depth, resolution, return_max_min=False):
+def make_encoder_stack(input_layer, depth, resolution):
     x = input_layer
-    max_min_outputs = []
     for i in range(depth):
         filters = [
             16 * (i + 1) * resolution,
@@ -88,12 +87,7 @@ def make_encoder_stack(input_layer, depth, resolution, return_max_min=False):
             32 * (i + 1) * resolution
         ]
         x = make_resnet_encoder_block(x, filters, ident=i + 1)
-        min_max = layers.GlobalMaxPool2D()(x)
-        max_min_outputs.append(min_max)
-    if return_max_min:
-        return layers.Concatenate()(max_min_outputs)
-    else:
-        return x
+    return x
 
 
 def make_decoder_stack(feature_map_after_bottleneck, depth, resolution):
@@ -106,20 +100,6 @@ def make_decoder_stack(feature_map_after_bottleneck, depth, resolution):
         ]
         x = make_resnet_decoder_block(x, filters, ident=i + 1)
     return x
-
-
-def residual_xood_feature_extractor(
-        input_shape,
-        depth,
-        resolution,
-):
-    input_sizes = {512: 0, 256: 0, 128: 0, 64: 0, 32: 0, }
-    assert input_shape[0] == input_shape[1], "Only Squared Inputs! - {} / {} -".format(input_shape[0], input_shape[1])
-    assert input_shape[0] in input_sizes, "Input Size is not supported ({})".format(input_shape[0])
-    input_layer = layers.Input(batch_shape=(None, input_shape[0], input_shape[1], input_shape[2]))
-    x = make_encoder_stack(input_layer, depth, resolution, return_max_min=True)
-    xood_encoder = keras.Model(input_layer, x)
-    return xood_encoder
 
 
 def asymmetric_residual_auto_encoder(

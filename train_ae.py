@@ -3,7 +3,7 @@ import tensorflow as tf
 from auto_encoder.data_set import DataSet
 from auto_encoder.auto_encoder import AutoEncoder
 
-from auto_encoder.augmentations import Augmentations
+from auto_encoder.augmentations import Augmentations, EncoderTask
 
 from auto_encoder.util import save_dict, check_n_make_dir
 
@@ -15,17 +15,17 @@ print("TF VERSION: ", tf.__version__)
 class Config:
     def __init__(self):
         self.opt = {
-            "backbone": "asym-residual",
-            "resolution": 4,
+            "backbone": "residual",
+            "resolution": 1,
             "depth": 4,
             "optimizer": "adam",
             "batch_size": 64,
             "embedding_size": 128,
             "embedding_type": "glob_avg",
             "embedding_activation": "linear",
-            "drop_rate": 0.75,
+            "drop_rate": 0.0,
             "init_learning_rate": 1e-3,
-            "input_shape": [64, 64, 3],
+            "input_shape": [128, 128, 3],
             "tf-version": tf.__version__,
         }
 
@@ -43,10 +43,11 @@ def main(args_):
     train_images, test_image = ds.get_data(0.8)
 
     augmentations = Augmentations(color=False)
+    encoder_task = EncoderTask(cross_cut=True)
 
     check_n_make_dir(mf)
     save_dict(Config().opt, os.path.join(mf, "opt.json"))
-    ae.fit(train_images, test_image, augmentations)
+    ae.fit(train_images, test_image, encoder_task)
 
 
 def parse_args():

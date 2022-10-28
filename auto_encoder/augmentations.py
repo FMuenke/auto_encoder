@@ -1,12 +1,6 @@
 import cv2
 import numpy as np
 from skimage.transform import rotate
-'''
-In this file are all functions for image augmentation stored
-Important use following format for bboxes variabel!
-bboxes = [bbox, bbox2, bbox3, ... ]
-with bbox = [classname, x1_abs, y1_abs, x2_abs, y2_abs, (prob)]
-'''
 
 
 class ChannelShift:
@@ -197,32 +191,56 @@ def apply_tiny_rotation(img, lab):
     return img.astype(np.uint8), lab.astype(np.int)
 
 
-def apply_cut_out(img):
+def apply_mask(img, lab, percentage):
     height, width, ch = img.shape
-    prz_zoom = 0.25
-    w_random = np.random.randint(int(width * prz_zoom))
-    h_random = np.random.randint(int(height * prz_zoom))
-    x1_img = np.random.randint(width - w_random)
-    y1_img = np.random.randint(height - h_random)
+    # Recalculate percentage to cover defined percentage of image
+    percentage = np.sqrt(100*100*percentage) / 100
 
-    mask = np.ones((h_random, w_random, 3))
-    mask[:, :, 0] = np.random.randint(0, 255)
-    mask[:, :, 1] = np.random.randint(0, 255)
-    mask[:, :, 2] = np.random.randint(0, 255)
+    mask_height = int(percentage * height)
+    mask_width = int(percentage * width)
+    y1_img = np.random.randint(height - mask_height)
+    x1_img = np.random.randint(width - mask_width)
+    img[y1_img:y1_img + mask_height, x1_img:x1_img + mask_width, 0] = np.random.randint(0, 255)
+    img[y1_img:y1_img + mask_height, x1_img:x1_img + mask_width, 1] = np.random.randint(0, 255)
+    img[y1_img:y1_img + mask_height, x1_img:x1_img + mask_width, 2] = np.random.randint(0, 255)
+    return img, lab
 
-    img[y1_img:y1_img+h_random, x1_img:x1_img+w_random, :] = mask
-    return img
+
+def apply_cross_cut(img, lab, percentage):
+    height, width, ch = img.shape
+    # Recalculate percentage to cover defined percentage of image
+    percentage = (100 - np.sqrt(100*100*(1 - percentage))) / 100
+
+    cross_height = int(percentage * height)
+    cross_width = int(percentage * width)
+    y1_img = np.random.randint(height - cross_height)
+    x1_img = np.random.randint(width - cross_width)
+
+    top_left = img[0:y1_img, 0:x1_img, :]
+    top_right = img[0:y1_img, x1_img+cross_width:, :]
+    bot_left = img[y1_img+cross_height:, 0:x1_img, :]
+    bot_right = img[y1_img+cross_height:, x1_img+cross_width:, :]
+
+    top = np.concatenate([top_left, top_right], axis=1)
+    bot = np.concatenate([bot_left, bot_right], axis=1)
+    img = np.concatenate([top, bot], axis=0)
+    img = cv2.resize(img, (width, height), interpolation=cv2.INTER_CUBIC)
+    return img, lab
+
+
+def apply_patch_rotation(img, lab, grid_size):
+    height, width, ch = img.shape
+    pass
 
 
 class Augmentations:
-    def __init__(self, flips=True, crop=True, rotation=True, noise=True, color=True, blur=True, cut_out=False):
+    def __init__(self, flips=True, crop=True, rotation=True, noise=True, color=True, blur=True):
         self.flips = flips
         self.rotation = rotation
         self.crop = crop
         self.noise = noise
         self.color = color
         self.blur = blur
-        self.cut_out = cut_out
 
     def apply(self, img, tar):
         if 0 == np.random.randint(6) and self.flips:
@@ -246,7 +264,44 @@ class Augmentations:
         if 0 == np.random.randint(5) and self.blur:
             img = apply_blur(img)
 
-        if 0 == np.random.randint(5) and self.cut_out:
-            img = apply_cut_out(img)
-
         return img, tar
+
+
+class EncoderTask:
+    def __init__(self, masking=False, cross_cut=False):
+        self.tasks = [
+            {
+                "name": "MASKING",
+                "active": masking,
+                "function": apply_mask,
+                "percentage": 0.25
+            },
+            {
+                "name": "CROSS_REMOVAL",
+                "active": cross_cut,
+                "function": apply_cross_cut,
+                "percentage": 0.25,
+            }
+        ]
+
+        self.active_tasks = [t for t in self.tasks if t["active"]]
+
+    def apply(self, img, tar):
+        if len(self.active_tasks) == 0:
+            return img, tar
+        task_to_apply = np.random.choice(self.active_tasks)
+        return task_to_apply["function"](img, tar, task_to_apply["percentage"])
+
+
+def tests():
+    img = cv2.imread("./test_image/test_traffic_sign.png")
+    img, _ = apply_mask(img, img, percentage=0.25)
+    cv2.imwrite("./test_image/test_traffic_sign_masked.png", img)
+
+    img = cv2.imread("./test_image/test_traffic_sign.png")
+    img, _ = apply_cross_cut(img, img, percentage=0.25)
+    cv2.imwrite("./test_image/test_traffic_sign_cross_cut.png", img)
+
+
+if __name__ == "__main__":
+    tests()
