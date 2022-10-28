@@ -15,17 +15,17 @@ print("TF VERSION: ", tf.__version__)
 class Config:
     def __init__(self):
         self.opt = {
-            "backbone": "residual",
+            "backbone": "asym-residual",
             "resolution": 1,
             "depth": 4,
             "optimizer": "adam",
             "batch_size": 64,
-            "embedding_size": 128,
+            "embedding_size": 64,
             "embedding_type": "glob_avg",
             "embedding_activation": "linear",
             "drop_rate": 0.0,
             "init_learning_rate": 1e-3,
-            "input_shape": [128, 128, 3],
+            "input_shape": [64, 64, 3],
             "tf-version": tf.__version__,
         }
 
@@ -47,7 +47,7 @@ def main(args_):
 
     check_n_make_dir(mf)
     save_dict(Config().opt, os.path.join(mf, "opt.json"))
-    ae.fit(train_images, test_image, encoder_task)
+    ae.fit(train_images, test_image, None)
 
 
 def parse_args():
@@ -61,8 +61,12 @@ def parse_args():
     parser.add_argument(
         "--model",
         "-m",
-        default="./test/",
         help="Path to model",
+    )
+    parser.add_argument(
+        "--task",
+        "-t",
+        help="Training Mode",
     )
     return parser.parse_args()
 

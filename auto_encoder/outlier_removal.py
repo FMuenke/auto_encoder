@@ -22,11 +22,13 @@ def eval_classifier(clf, clf_id, x_train, y_train, x_test, y_test, data_frame_te
     print("Fitting CLF: {}".format(clf_id))
     clf.fit(x_train, y_train)
     y_cls_only = clf.predict(x_test[y_test != 0, :])
-    s += "[{} - F1-SCORE] {}\n".format(clf_id, f1_score(y_test[y_test != 0], y_cls_only))
+    f1 = f1_score(y_test[y_test != 0], y_cls_only)
+    s += "[{} - F1-SCORE] {}\n".format(clf_id, f1)
     proba = clf.predict_proba(x_test)
     max_proba = np.max(proba, axis=1)
-    s += "[{} - AUROC] {}\n".format(clf_id, roc_auc_score(data_frame_test["status_id"], max_proba))
-    return s
+    auroc = roc_auc_score(data_frame_test["status_id"], max_proba)
+    s += "[{} - AUROC] {}\n".format(clf_id, auroc)
+    return s, auroc, f1
 
 
 def eval_outlier_detector(ood, ood_id, x_train, x_test, data_frame_test):
@@ -34,8 +36,9 @@ def eval_outlier_detector(ood, ood_id, x_train, x_test, data_frame_test):
     print("Fitting OOD: {}".format(ood_id))
     ood.fit(x_train)
     outlier_score = ood.score_samples(x_test)
-    s += "[{}] {}\n".format(ood_id, roc_auc_score(data_frame_test["status_id"], outlier_score))
-    return s
+    auroc = roc_auc_score(data_frame_test["status_id"], outlier_score)
+    s += "[{}] {}\n".format(ood_id, auroc)
+    return s, auroc
 
 
 def plot_feature_space(x_train, x_test, data_frame_test, save_path):
@@ -71,8 +74,10 @@ def eval_outlier_removal(x_train, y_train, x_test, y_test, data_frame_test, save
         [KNeighborsClassifier(n_jobs=-1, n_neighbors=5), "KNN (5) CLASSIFIER"],
         [KNeighborsClassifier(n_jobs=-1, n_neighbors=15), "KNN (15) CLASSIFIER"],
     ]
+    data = []
     for clf, clf_id in clf_list:
-        s_clf = eval_classifier(clf, clf_id, x_train, y_train, x_test, y_test, data_frame_test)
+        s_clf, auroc, f1 = eval_classifier(clf, clf_id, x_train, y_train, x_test, y_test, data_frame_test)
+        data.append({"name": clf_id, "AUROC": auroc, "F1-Score": f1, "type": "CLS"})
         s += s_clf
 
     s += "\n[INFO] Fitting outlier removal...\n"
@@ -87,11 +92,15 @@ def eval_outlier_removal(x_train, y_train, x_test, y_test, data_frame_test, save
     ]
 
     for ood, ood_id in ood_list:
-        s_ood = eval_outlier_detector(ood, ood_id, x_train, x_test, data_frame_test)
+        s_ood, auroc = eval_outlier_detector(ood, ood_id, x_train, x_test, data_frame_test)
+        data.append({"name": ood_id, "AUROC": auroc, "type": "OOD"})
         s += s_ood
 
     print(s)
     with open(os.path.join(save_path, "outlier-results.txt"), "w") as f:
         f.write(s)
+
+    data_frame = pd.DataFrame(data)
+    data_frame.to_csv(os.path.join(save_path, "outlier-results.csv"))
 
     plot_feature_space(x_train, x_test, data_frame_test, save_path)
