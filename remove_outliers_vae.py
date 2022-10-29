@@ -8,7 +8,7 @@ from auto_encoder.variational_auto_encoder import VariationalAutoEncoder
 from auto_encoder.util import save_dict, load_dict
 
 import pandas as pd
-from auto_encoder.outlier_removal import eval_outlier_removal
+from utils.outlier_removal import eval_outlier_removal
 
 from tqdm import tqdm
 

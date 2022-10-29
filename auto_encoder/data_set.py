@@ -32,7 +32,17 @@ class TrainImage:
         assert x is not None, "No image was found."
         return x
 
+    def get_label_file(self):
+        df = os.path.dirname(self.base_path)
+        return os.path.join(df, "labels", self.name[:-4] + ".txt")
+
     def load_y(self):
+        pot_label_file = self.get_label_file()
+        if os.path.isfile(pot_label_file):
+            with open(pot_label_file) as f:
+                content = f.read()
+                label = content.strip()
+                return label
         cls_name = os.path.basename(self.base_path)
         if cls_name == "images":
             previous_folder = os.path.dirname(self.base_path)

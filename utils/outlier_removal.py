@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-def eval_classifier(clf, clf_id, x_train, y_train, x_test, y_test, data_frame_test):
+def eval_classifier_outlier_removal(clf, clf_id, x_train, y_train, x_test, y_test, data_frame_test):
     s = ""
     print("Fitting CLF: {}".format(clf_id))
     clf.fit(x_train, y_train)
@@ -76,7 +76,7 @@ def eval_outlier_removal(x_train, y_train, x_test, y_test, data_frame_test, save
     ]
     data = []
     for clf, clf_id in clf_list:
-        s_clf, auroc, f1 = eval_classifier(clf, clf_id, x_train, y_train, x_test, y_test, data_frame_test)
+        s_clf, auroc, f1 = eval_classifier_outlier_removal(clf, clf_id, x_train, y_train, x_test, y_test, data_frame_test)
         data.append({"name": clf_id, "AUROC": auroc, "F1-Score": f1, "type": "CLS"})
         s += s_clf
 
