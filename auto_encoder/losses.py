@@ -3,6 +3,13 @@ import tensorflow as tf
 from tensorflow.keras.losses import binary_crossentropy
 
 
+def entropy_minimum():
+    def entropy_minimum_func(y_true, y_pred):
+        pass
+
+    return entropy_minimum_func
+
+
 def dice():
     def dice_coef(y_true, y_pred, smooth=1):
         """

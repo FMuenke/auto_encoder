@@ -1,6 +1,5 @@
 import os
 import numpy as np
-import tensorflow as tf
 from tensorflow.keras import optimizers
 
 import pickle
@@ -10,7 +9,6 @@ from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, Early
 
 from auto_encoder.residual import residual_auto_encoder, asymmetric_residual_auto_encoder
 from auto_encoder.fully_connected import fully_connected_auto_encoder
-from auto_encoder.asymmetric_auto_encoder import asymmetric_auto_encoder
 from auto_encoder.data_generator import DataGenerator
 
 from auto_encoder.util import check_n_make_dir
@@ -78,7 +76,7 @@ class AutoEncoder:
         res = np.array(res)
         return res
 
-    def get_backbone(self, add_decoder):
+    def get_backbone(self):
         if self.backbone in ["resnet", "residual"]:
             x_input, bottleneck, output = residual_auto_encoder(
                 input_shape=self.input_shape,
@@ -106,24 +104,17 @@ class AutoEncoder:
                 embedding_activation=self.embedding_activation,
                 drop_rate=self.drop_rate
             )
-        elif self.backbone in ["asymetric"]:
-            x_input, bottleneck, output = asymmetric_auto_encoder(
-                input_shape=self.input_shape,
-                embedding_size=self.embedding_size,
-                embedding_type=self.embedding_type,
-                embedding_activation=self.embedding_activation,
-                drop_rate=self.drop_rate,
-            )
         else:
             raise ValueError("{} Backbone was not recognised".format(self.backbone))
 
-        if add_decoder:
-            return x_input, output
-        else:
-            return x_input, bottleneck
+        return x_input, bottleneck, output
 
     def build(self, compile_model=True, add_decoder=True):
-        x_input, y = self.get_backbone(add_decoder)
+        x_input, bottleneck, output = self.get_backbone()
+        if add_decoder:
+            y = output
+        else:
+            y = bottleneck
 
         self.model = Model(inputs=x_input, outputs=y)
         self.load()

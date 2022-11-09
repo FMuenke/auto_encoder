@@ -55,7 +55,6 @@ class DataGenerator(keras.utils.Sequence):
         y = []
         for i, tag in enumerate(tags_temp):
             img = tag.load_x()
-            # tar = np.copy(img)
             tar = img
 
             if self.augmentations is not None:
