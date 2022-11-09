@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 from skimage.transform import rotate
+from sklearn.feature_extraction.image import extract_patches_2d, reconstruct_from_patches_2d
 
 
 class ChannelShift:
@@ -206,6 +207,40 @@ def apply_mask(img, lab, percentage):
     return img, lab
 
 
+def gaus2d(x=0, y=0, mx=0, my=0, sx=1, sy=1):
+    return 1. / (2. * np.pi * sx * sy) * np.exp(-((x - mx)**2. / (2. * sx**2.) + (y - my)**2. / (2. * sy**2.)))
+
+
+def norm(data):
+    min_mat = np.min(data)
+    max_mat = np.max(data)
+    return (data - min_mat) / (max_mat - min_mat)
+
+
+def apply_blackhole_mask(img, lab, percentage):
+    height, width, ch = img.shape
+    # Recalculate percentage to cover defined percentage of image
+    percentage = np.sqrt(100 * 100 * percentage) / 100
+
+    x = np.linspace(0, width, width)
+    y = np.linspace(0, height, height)
+    mx = np.random.randint(width)
+    my = np.random.randint(height)
+    sx = int(percentage * width)
+    sy = int(percentage * height)
+    x, y = np.meshgrid(x, y)  # get 2D variables instead of 1D
+    g_m = gaus2d(x, y, mx, my, sx, sy)
+    g_m = np.expand_dims(g_m, axis=2)
+    g_m = np.concatenate([g_m, g_m, g_m], axis=2)
+
+    g_m = np.clip(norm(g_m) * 1.5, 0, 1)
+    g_m = np.ones(g_m.shape) - g_m
+    img = img * g_m
+
+    # img[y1_img:y1_img + mask_height, x1_img:x1_img + mask_width, :] = masked_area
+    return img, lab
+
+
 def apply_cross_cut(img, lab, percentage):
     height, width, ch = img.shape
     # Recalculate percentage to cover defined percentage of image
@@ -228,9 +263,76 @@ def apply_cross_cut(img, lab, percentage):
     return img, lab
 
 
-def apply_patch_rotation(img, lab, grid_size):
+def img_to_patches(img, window_size):
+    tiles = []
+    for i in range(0, img.shape[0], window_size):
+        for j in range(0, img.shape[1], window_size):
+            tiles.append(img[i:i + window_size, j:j + window_size, :])
+    return tiles
+
+
+def patches_to_img(patches, img_size):
+    img = np.zeros((img_size, img_size, 3))
+    window_size = patches[0].shape[0]
+    c = 0
+    for i in range(0, img.shape[0], window_size):
+        for j in range(0, img.shape[1], window_size):
+            img[i:i + window_size, j:j + window_size, :] = patches[c]
+            c += 1
+    return img
+
+
+def rotate_patch(patch):
+    angle = np.random.choice([90, 180, 270])
+    if angle == 270:
+        patch = np.transpose(patch, (1, 0, 2))
+        patch = cv2.flip(patch, 0)
+    elif angle == 180:
+        patch = cv2.flip(patch, -1)
+    else:
+        patch = np.transpose(patch, (1, 0, 2))
+        patch = cv2.flip(patch, 1)
+    return patch
+
+
+def apply_patch_rotation(img, lab, n_patches=8, percentage=0.25):
     height, width, ch = img.shape
-    pass
+    size = 128
+    img = cv2.resize(img, (size, size), interpolation=cv2.INTER_CUBIC)
+    patches = img_to_patches(img, int(size / n_patches))
+
+    patch_selected = np.arange(len(patches))
+    patch_selected = np.random.choice(patch_selected, int(percentage * len(patches)), replace=False)
+
+    for p_i, patch in enumerate(patches):
+        if p_i in patch_selected:
+            patch = rotate_patch(patch)
+        patches[p_i] = patch
+    img = patches_to_img(patches, size)
+    img = cv2.resize(img, (width, height), interpolation=cv2.INTER_CUBIC)
+    return img, lab
+
+
+def apply_patch_shuffling(img, lab, n_patches=8, percentage=0.25):
+    height, width, ch = img.shape
+    size = 128
+    img = cv2.resize(img, (size, size), interpolation=cv2.INTER_CUBIC)
+    patches = img_to_patches(img, int(size / n_patches))
+
+    patch_selected = np.arange(len(patches))
+    patch_selected = np.random.choice(patch_selected, int(percentage * len(patches)), replace=False)
+    patch_shuffled = np.copy(patch_selected)
+    np.random.shuffle(patch_shuffled)
+
+    patch_mapping = {i: j for i, j in zip(patch_selected, patch_shuffled)}
+
+    for p_i, patch in enumerate(patches):
+        if p_i in patch_selected:
+            patch = patches[patch_mapping[p_i]]
+        patches[p_i] = patch
+    img = patches_to_img(patches, size)
+    img = cv2.resize(img, (width, height), interpolation=cv2.INTER_CUBIC)
+    return img, lab
 
 
 class Augmentations:
@@ -268,19 +370,37 @@ class Augmentations:
 
 
 class EncoderTask:
-    def __init__(self, masking=False, cross_cut=False):
+    def __init__(self, masking=False, cross_cut=False, patch_rotation=False, patch_shuffling=False, black_hole=False, percentage=0.25):
         self.tasks = [
             {
                 "name": "MASKING",
                 "active": masking,
                 "function": apply_mask,
-                "percentage": 0.25
+                "percentage": percentage
             },
             {
                 "name": "CROSS_REMOVAL",
                 "active": cross_cut,
                 "function": apply_cross_cut,
-                "percentage": 0.25,
+                "percentage": percentage,
+            },
+            {
+                "name": "PATCH_ROTATION",
+                "active": patch_rotation,
+                "function": apply_patch_rotation,
+                "percentage": percentage,
+            },
+            {
+                "name": "PATCH_SHUFFLING",
+                "active": patch_shuffling,
+                "function": apply_patch_shuffling,
+                "percentage": percentage,
+            },
+            {
+                "name": "BLACKHOLE_MASKING",
+                "active": black_hole,
+                "function": apply_blackhole_mask,
+                "percentage": percentage,
             }
         ]
 
@@ -290,7 +410,7 @@ class EncoderTask:
         if len(self.active_tasks) == 0:
             return img, tar
         task_to_apply = np.random.choice(self.active_tasks)
-        return task_to_apply["function"](img, tar, task_to_apply["percentage"])
+        return task_to_apply["function"](img, tar, percentage=task_to_apply["percentage"])
 
 
 def tests():
@@ -301,6 +421,18 @@ def tests():
     img = cv2.imread("./test_image/test_traffic_sign.png")
     img, _ = apply_cross_cut(img, img, percentage=0.25)
     cv2.imwrite("./test_image/test_traffic_sign_cross_cut.png", img)
+
+    img = cv2.imread("./test_image/test_traffic_sign.png")
+    img, _ = apply_patch_rotation(img, img)
+    cv2.imwrite("./test_image/test_traffic_sign_patch_rotation.png", img)
+
+    img = cv2.imread("./test_image/test_traffic_sign.png")
+    img, _ = apply_patch_shuffling(img, img)
+    cv2.imwrite("./test_image/test_traffic_sign_patch_shuffle.png", img)
+
+    img = cv2.imread("./test_image/test_traffic_sign.png")
+    img, _ = apply_blackhole_mask(img, img, percentage=0.25)
+    cv2.imwrite("./test_image/test_traffic_sign_masked_blur.png", img)
 
 
 if __name__ == "__main__":

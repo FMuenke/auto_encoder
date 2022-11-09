@@ -10,25 +10,30 @@ class Embedding:
 
         self.drop_rate = drop_rate
 
-    def create_dense_encoder(self, x):
+    def create_dense_encoder(self, x, embedding_size):
         if self.drop_rate > 0:
             x = layers.Dropout(self.drop_rate)(x)
-        bottleneck = layers.Dense(self.embedding_size)(x)
+        bottleneck = layers.Dense(embedding_size)(x)
         return bottleneck
 
     def build(self, x):
         if self.embedding_type == "None":
             latent = x
-            bottleneck = self.create_dense_encoder(latent)
+            bottleneck = self.create_dense_encoder(latent, self.embedding_size)
+        elif self.embedding_type == "glob_avg_dense":
+            latent = layers.GlobalAveragePooling2D()(x)
+            latent = self.create_dense_encoder(latent, self.embedding_size * 2)
+            latent = layers.LeakyReLU()(latent)
+            bottleneck = self.create_dense_encoder(latent, self.embedding_size)
         elif self.embedding_type == "flatten":
             latent = layers.Flatten()(x)
-            bottleneck = self.create_dense_encoder(latent)
+            bottleneck = self.create_dense_encoder(latent, self.embedding_size)
         elif self.embedding_type == "glob_avg":
             latent = layers.GlobalAveragePooling2D()(x)
-            bottleneck = self.create_dense_encoder(latent)
+            bottleneck = self.create_dense_encoder(latent, self.embedding_size)
         elif self.embedding_type == "glob_max":
             latent = layers.GlobalMaxPool2D()(x)
-            bottleneck = self.create_dense_encoder(latent)
+            bottleneck = self.create_dense_encoder(latent, self.embedding_size)
         elif self.embedding_type == "conv":
             if self.drop_rate > 0:
                 x = layers.SpatialDropout2D(self.drop_rate)(x)

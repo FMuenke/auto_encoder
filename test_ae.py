@@ -5,7 +5,7 @@ from tqdm import tqdm
 from auto_encoder.data_set import DataSet
 from auto_encoder.auto_encoder import AutoEncoder
 
-from auto_encoder.util import check_n_make_dir, load_dict
+from auto_encoder.util import check_n_make_dir, load_dict, save_dict
 
 import argparse
 
@@ -55,8 +55,7 @@ def main(args_):
     err = np.mean(err)
     s = "[RESULTS]: MEA: {}".format(err)
     print(s)
-    with open(os.path.join(mf, "report.txt"), "w") as f:
-        f.write(s)
+    save_dict({"MAE": err}, os.path.join(mf, "reconstruction_error.json"))
 
 
 def parse_args():

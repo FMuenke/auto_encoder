@@ -16,17 +16,19 @@ from auto_encoder.data_generator import DataGenerator
 from auto_encoder.util import check_n_make_dir
 from auto_encoder.util import prepare_input
 
-try:
-    physical_devices = tf.config.experimental.list_physical_devices('GPU')
-    tf.config.experimental.set_memory_growth(physical_devices[0], True)
+os.environ['CUDA_VISIBLE_DEVICES'] = "1"
+
+# try:
+    # physical_devices = tf.config.experimental.list_physical_devices('GPU')
+    # tf.config.experimental.set_memory_growth(physical_devices[0], True)
     # tf.config.experimental.set_virtual_device_configuration(
     #     physical_devices[0],
     #     tf.config.experimental.VirtualDeviceConfiguration(memory_limit=4096)
     # )
 
-except Exception as e:
-    print(e)
-    print("ATTENTION: GPU IS NOT USED....")
+# except Exception as e:
+    # print(e)
+    # print("ATTENTION: GPU IS NOT USED....")
 
 
 class AutoEncoder:
@@ -162,6 +164,7 @@ class AutoEncoder:
             tag_set_test,
             image_size=self.input_shape,
             batch_size=self.batch_size,
+            augmentations=augmentations,
         )
 
         checkpoint = ModelCheckpoint(
