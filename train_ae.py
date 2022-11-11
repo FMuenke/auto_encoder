@@ -58,20 +58,22 @@ def main(args_):
 
     if cfg.opt["task"] == "reconstruction":
         task = None
+    elif cfg.opt["task"] == "blurring":
+        task = EncoderTask(blurring=True, neutral=True, percentage=cfg.opt["task_difficulty"])
     elif cfg.opt["task"] == "denoise":
-        task = Augmentations()
+        task = EncoderTask(noise=True, neutral=True, percentage=cfg.opt["task_difficulty"])
     elif cfg.opt["task"] == "completion_cross_cut":
-        task = EncoderTask(cross_cut=True, percentage=cfg.opt["task_difficulty"])
+        task = EncoderTask(cross_cut=True, neutral=True, percentage=cfg.opt["task_difficulty"])
     elif cfg.opt["task"] == "completion_masking":
-        task = EncoderTask(masking=True, percentage=cfg.opt["task_difficulty"])
+        task = EncoderTask(masking=True, neutral=True, percentage=cfg.opt["task_difficulty"])
     elif cfg.opt["task"] == "reconstruction_shuffled":
-        task = EncoderTask(patch_shuffling=True, percentage=cfg.opt["task_difficulty"])
+        task = EncoderTask(patch_shuffling=True, neutral=True, percentage=cfg.opt["task_difficulty"])
     elif cfg.opt["task"] == "reconstruction_rotated":
-        task = EncoderTask(patch_rotation=True, percentage=cfg.opt["task_difficulty"])
+        task = EncoderTask(patch_rotation=True, neutral=True, percentage=cfg.opt["task_difficulty"])
     elif cfg.opt["task"] == "completion_blackhole":
-        task = EncoderTask(black_hole=True, percentage=cfg.opt["task_difficulty"])
+        task = EncoderTask(black_hole=True, neutral=True, percentage=cfg.opt["task_difficulty"])
     else:
-        raise Exception("No Task Specified..")
+        raise Exception("No Valid Task Specified.. {}".format(cfg.opt["task"]))
 
     check_n_make_dir(mf)
     save_dict(cfg.opt, os.path.join(mf, "opt.json"))
@@ -87,8 +89,8 @@ def parse_args():
         help="Path to directory with dataset",
     )
     parser.add_argument("--model", "-m", help="Path to model")
-    parser.add_argument("--task", "-t", help="Path to model")
-    parser.add_argument("--task_difficulty", "-difficulty", default=0.25, help="Training Mode")
+    parser.add_argument("--task", "-t", default="reconstruction", help="Path to model")
+    parser.add_argument("--task_difficulty", "-difficulty", default=0.0, help="Training Mode")
     parser.add_argument("--embedding_size", "-size", default=128, help="Training Mode")
     parser.add_argument("--embedding_type", "-type", default="glob_avg", help="Training Mode")
     parser.add_argument("--embedding_activation", "-activation", default="linear", help="Training Mode")

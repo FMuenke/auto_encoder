@@ -58,10 +58,10 @@ def main(args_):
 
     properties = {
         "clf": ["LR"],
-        "n_labels": 10000,
+        "n_labels": 2500,
         "depth": [2],
         "resolution": [16],
-        "embedding_size": 256,
+        # "embedding_size": 256,
         "drop_rate": 0.0,
         # "task": "reconstruction",
         # "task_difficulty": 0.25,
@@ -70,6 +70,7 @@ def main(args_):
         "backbone": "residual",
     }
     lr_data_frame = select_properties(data_frame, properties)
+    print(lr_data_frame['Accuracy'].max())
     sns.lineplot(data=lr_data_frame, x="task_difficulty", y="Accuracy", hue="task")
     plt.show()
 

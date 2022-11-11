@@ -1,13 +1,24 @@
+import numpy as np
 from tensorflow.keras import backend as K
 import tensorflow as tf
-from tensorflow.keras.losses import binary_crossentropy
+from tensorflow.keras.losses import binary_crossentropy, categorical_crossentropy, mean_squared_error
 
 
-def entropy_minimum():
+def entropy_minimum(n_classes):
     def entropy_minimum_func(y_true, y_pred):
-        pass
+        idx = K.argmax(y_pred, axis=1)
+        y_true = K.one_hot(idx, n_classes)
+        value = categorical_crossentropy(y_true, y_pred)
+        return tf.reduce_sum(value)
 
     return entropy_minimum_func
+
+
+def mean_sq_err():
+    def mean_sq_err_func(y_true, y_pred):
+        value = mean_squared_error(y_true, y_pred)
+        return tf.reduce_mean(value)
+    return mean_sq_err_func
 
 
 def dice():
@@ -95,3 +106,20 @@ def mixed():
 
         return binary_crossentropy(y_true, y_pred) + dice_loss(y_true, y_pred)
     return loss
+
+
+if __name__ == "__main__":
+    loss_entropy = entropy_minimum(100)
+    y_true = K.zeros((8, 100), dtype=tf.float64)
+    y_pred = K.one_hot([10, 20, 30, 40, 50, 60, 70], 100)
+    l_val = loss_entropy(y_true, y_pred)
+    print(l_val)
+
+    data_1 = np.random.randint(255, size=(4, 128, 128, 3)) / 255
+    data_2 = np.random.randint(255, size=(4, 128, 128, 3)) / 255
+    loss_mse = mean_sq_err()
+
+    l_val_2 = loss_mse(data_1, data_2)
+    print(l_val_2)
+
+    print(l_val + l_val_2)

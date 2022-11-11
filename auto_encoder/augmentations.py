@@ -80,34 +80,35 @@ class NeedsMoreJPG:
 
 
 class SaltNPepper:
-    def __init__(self, max_delta, grain_size, seed=2022):
+    def __init__(self, max_delta, grain_size):
         self.name = "SaltNPepper"
         self.max_delta = max_delta
         self.grain_size = grain_size
-        self.seed = seed
-        self.rng = np.random.default_rng(seed)
 
     def apply(self, img):
         h, w, c = img.shape
         snp_h = max(int(h / self.grain_size), 3)
         snp_w = max(int(w / self.grain_size), 3)
-        snp = self.rng.integers(-self.max_delta, self.max_delta, size=[snp_h, snp_w, c])
+        snp = np.random.randint(-self.max_delta, self.max_delta, size=[snp_h, snp_w, c])
         snp = cv2.resize(snp, (w, h), interpolation=cv2.INTER_NEAREST)
         img = img.astype(np.int) + snp
         return np.clip(img, 0, 255).astype(np.uint8)
 
 
-def apply_noise(img):
+def apply_noise(img, tar, percentage):
     noise = SaltNPepper(
-        max_delta=np.random.choice([5, 10, 15]),
+        max_delta=int(percentage * 256),
         grain_size=np.random.choice([1, 2, 4, 8])
     )
-    return noise.apply(img)
+    return noise.apply(img), tar
 
 
-def apply_blur(img):
-    noise = Blurring(kernel=9, randomness=5)
-    return noise.apply(img)
+def apply_blur(img, lab, percentage):
+    height, width, ch = img.shape
+    k_w = int(percentage * width / 2)
+    k_h = int(percentage * height / 2)
+    img = cv2.blur(img.astype(np.float32), ksize=(k_w, k_h))
+    return img.astype(np.uint8), lab
 
 
 def apply_channel_shift(img):
@@ -241,6 +242,14 @@ def apply_blackhole_mask(img, lab, percentage):
     return img, lab
 
 
+def apply_to_edge_image(img, tar, percentage):
+    height, width, ch = img.shape
+    k = 7
+    for c in range(3):
+        img[:, :, c] = 255 * norm(cv2.Laplacian(img[:, :, c], -1, ksize=k))
+    return img, tar
+
+
 def apply_cross_cut(img, lab, percentage):
     height, width, ch = img.shape
     # Recalculate percentage to cover defined percentage of image
@@ -336,13 +345,10 @@ def apply_patch_shuffling(img, lab, n_patches=8, percentage=0.25):
 
 
 class Augmentations:
-    def __init__(self, flips=True, crop=True, rotation=True, noise=True, color=True, blur=True):
+    def __init__(self, flips=True, crop=True, rotation=True):
         self.flips = flips
         self.rotation = rotation
         self.crop = crop
-        self.noise = noise
-        self.color = color
-        self.blur = blur
 
     def apply(self, img, tar):
         if 0 == np.random.randint(6) and self.flips:
@@ -357,21 +363,31 @@ class Augmentations:
         if 0 == np.random.randint(6) and self.rotation:
             img, tar = apply_rotation_90(img, tar)
 
-        if 0 == np.random.randint(5) and self.noise:
-            img = apply_noise(img)
-
-        if 0 == np.random.randint(5) and self.color:
-            img = apply_channel_shift(img)
-
-        if 0 == np.random.randint(5) and self.blur:
-            img = apply_blur(img)
-
         return img, tar
 
 
+def dummy_function(img, tar, percentage):
+    return img, tar
+
+
 class EncoderTask:
-    def __init__(self, masking=False, cross_cut=False, patch_rotation=False, patch_shuffling=False, black_hole=False, percentage=0.25):
+    def __init__(self,
+                 neutral=False,
+                 masking=False,
+                 cross_cut=False,
+                 patch_rotation=False,
+                 patch_shuffling=False,
+                 black_hole=False,
+                 blurring=False,
+                 noise=False,
+                 percentage=0.25):
         self.tasks = [
+            {
+                "name": "NEUTRAL",
+                "active": neutral,
+                "function": dummy_function,
+                "percentage": percentage,
+            },
             {
                 "name": "MASKING",
                 "active": masking,
@@ -401,6 +417,18 @@ class EncoderTask:
                 "active": black_hole,
                 "function": apply_blackhole_mask,
                 "percentage": percentage,
+            },
+            {
+                "name": "BLURRING",
+                "active": blurring,
+                "function": apply_blur,
+                "percentage": percentage
+            },
+            {
+                "name": "NOISE",
+                "active": noise,
+                "function": apply_noise,
+                "percentage": percentage
             }
         ]
 
@@ -432,7 +460,15 @@ def tests():
 
     img = cv2.imread("./test_image/test_traffic_sign.png")
     img, _ = apply_blackhole_mask(img, img, percentage=0.25)
-    cv2.imwrite("./test_image/test_traffic_sign_masked_blur.png", img)
+    cv2.imwrite("./test_image/test_traffic_sign_masked_clackhole.png", img)
+
+    img = cv2.imread("./test_image/test_traffic_sign.png")
+    img, _ = apply_blur(img, img, percentage=0.25)
+    cv2.imwrite("./test_image/test_traffic_sign_blur.png", img)
+
+    img = cv2.imread("./test_image/test_traffic_sign.png")
+    img, _ = apply_noise(img, img, percentage=0.50)
+    cv2.imwrite("./test_image/test_traffic_sign_noise.png", img)
 
 
 if __name__ == "__main__":
