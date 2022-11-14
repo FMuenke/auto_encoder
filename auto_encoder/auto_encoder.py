@@ -155,7 +155,6 @@ class AutoEncoder:
             tag_set_test,
             image_size=self.input_shape,
             batch_size=self.batch_size,
-            augmentations=augmentations,
         )
 
         checkpoint = ModelCheckpoint(

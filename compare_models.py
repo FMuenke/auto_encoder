@@ -58,7 +58,7 @@ def main(args_):
 
     properties = {
         "clf": ["LR"],
-        "n_labels": 2500,
+        "n_labels": 10000,
         "depth": [2],
         "resolution": [16],
         # "embedding_size": 256,

@@ -59,19 +59,19 @@ def main(args_):
     if cfg.opt["task"] == "reconstruction":
         task = None
     elif cfg.opt["task"] == "blurring":
-        task = EncoderTask(blurring=True, neutral=True, percentage=cfg.opt["task_difficulty"])
+        task = EncoderTask(blurring=cfg.opt["task_difficulty"])
     elif cfg.opt["task"] == "denoise":
-        task = EncoderTask(noise=True, neutral=True, percentage=cfg.opt["task_difficulty"])
+        task = EncoderTask(noise=cfg.opt["task_difficulty"])
     elif cfg.opt["task"] == "completion_cross_cut":
-        task = EncoderTask(cross_cut=True, neutral=True, percentage=cfg.opt["task_difficulty"])
+        task = EncoderTask(cross_cut=cfg.opt["task_difficulty"])
     elif cfg.opt["task"] == "completion_masking":
-        task = EncoderTask(masking=True, neutral=True, percentage=cfg.opt["task_difficulty"])
+        task = EncoderTask(masking=cfg.opt["task_difficulty"])
     elif cfg.opt["task"] == "reconstruction_shuffled":
-        task = EncoderTask(patch_shuffling=True, neutral=True, percentage=cfg.opt["task_difficulty"])
+        task = EncoderTask(patch_shuffling=cfg.opt["task_difficulty"])
     elif cfg.opt["task"] == "reconstruction_rotated":
-        task = EncoderTask(patch_rotation=True, neutral=True, percentage=cfg.opt["task_difficulty"])
+        task = EncoderTask(patch_rotation=cfg.opt["task_difficulty"])
     elif cfg.opt["task"] == "completion_blackhole":
-        task = EncoderTask(black_hole=True, neutral=True, percentage=cfg.opt["task_difficulty"])
+        task = EncoderTask(black_hole=cfg.opt["task_difficulty"])
     else:
         raise Exception("No Valid Task Specified.. {}".format(cfg.opt["task"]))
 

@@ -372,67 +372,58 @@ def dummy_function(img, tar, percentage):
 
 class EncoderTask:
     def __init__(self,
-                 neutral=False,
-                 masking=False,
-                 cross_cut=False,
-                 patch_rotation=False,
-                 patch_shuffling=False,
-                 black_hole=False,
-                 blurring=False,
-                 noise=False,
-                 percentage=0.25):
+                 neutral=0.0,
+                 masking=0.0,
+                 cross_cut=0.0,
+                 patch_rotation=0.0,
+                 patch_shuffling=0.0,
+                 black_hole=0.0,
+                 blurring=0.0,
+                 noise=0.0,):
         self.tasks = [
             {
                 "name": "NEUTRAL",
-                "active": neutral,
                 "function": dummy_function,
-                "percentage": percentage,
+                "percentage": neutral,
             },
             {
                 "name": "MASKING",
-                "active": masking,
                 "function": apply_mask,
-                "percentage": percentage
+                "percentage": masking
             },
             {
                 "name": "CROSS_REMOVAL",
-                "active": cross_cut,
                 "function": apply_cross_cut,
-                "percentage": percentage,
+                "percentage": cross_cut,
             },
             {
                 "name": "PATCH_ROTATION",
-                "active": patch_rotation,
                 "function": apply_patch_rotation,
-                "percentage": percentage,
+                "percentage": patch_rotation,
             },
             {
                 "name": "PATCH_SHUFFLING",
-                "active": patch_shuffling,
                 "function": apply_patch_shuffling,
-                "percentage": percentage,
+                "percentage": patch_shuffling,
             },
             {
                 "name": "BLACKHOLE_MASKING",
-                "active": black_hole,
                 "function": apply_blackhole_mask,
-                "percentage": percentage,
+                "percentage": black_hole,
             },
             {
                 "name": "BLURRING",
-                "active": blurring,
                 "function": apply_blur,
-                "percentage": percentage
+                "percentage": blurring
             },
             {
                 "name": "NOISE",
-                "active": noise,
                 "function": apply_noise,
-                "percentage": percentage
+                "percentage": noise
             }
         ]
 
-        self.active_tasks = [t for t in self.tasks if t["active"]]
+        self.active_tasks = [t for t in self.tasks if t["percentage"] > 0.0]
 
     def apply(self, img, tar):
         if len(self.active_tasks) == 0:
@@ -463,7 +454,7 @@ def tests():
     cv2.imwrite("./test_image/test_traffic_sign_masked_clackhole.png", img)
 
     img = cv2.imread("./test_image/test_traffic_sign.png")
-    img, _ = apply_blur(img, img, percentage=0.25)
+    img, _ = apply_blur(img, img, percentage=0.75)
     cv2.imwrite("./test_image/test_traffic_sign_blur.png", img)
 
     img = cv2.imread("./test_image/test_traffic_sign.png")
