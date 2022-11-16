@@ -3,11 +3,10 @@ import argparse
 import numpy as np
 from auto_encoder.data_set import DataSet
 from auto_encoder.auto_encoder import AutoEncoder
+from auto_encoder.variational_auto_encoder import VariationalAutoEncoder
 
 from auto_encoder.util import save_dict, load_dict
 from utils.ssl_lib import eval_semi_supervised_classification
-
-import pandas as pd
 
 from tqdm import tqdm
 
@@ -28,7 +27,7 @@ def load_data_set(model, path_to_data, class_mapping):
         cls = i.load_y()
         data_y.append(class_mapping[cls])
         data = i.load_x()
-        pred = model.inference(data)
+        pred = model.encode(data)
         if data_x is None:
             data_x = pred
         else:
@@ -41,8 +40,18 @@ def get_data_sets(ds_path_train, ds_path_test, model_path, class_mapping):
     cfg = Config()
     if os.path.isfile(os.path.join(model_path, "opt.json")):
         cfg.opt = load_dict(os.path.join(model_path, "opt.json"))
-    ae = AutoEncoder(model_path, cfg)
-    ae.build(False, add_decoder=False)
+    if "type" in cfg.opt:
+        if cfg.opt["type"] == "variational-autoencoder":
+            ae = VariationalAutoEncoder(model_path, cfg)
+            ae.build(add_decoder=True)
+        elif cfg.opt["type"] == "autoencoder":
+            ae = AutoEncoder(model_path, cfg)
+            ae.build(add_decoder=True)
+        else:
+            raise Exception("UNKNOWN TYPE: {}".format(cfg.opt["type"]))
+    else:
+        ae = AutoEncoder(model_path, cfg)
+        ae.build(add_decoder=True)
 
     x_train, y_train = load_data_set(ae, ds_path_train, class_mapping)
     np.save(os.path.join(model_path, "x_train.npy"), x_train)

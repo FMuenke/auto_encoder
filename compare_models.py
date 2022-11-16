@@ -57,7 +57,7 @@ def main(args_):
     print(data_frame.iloc[data_frame['Accuracy'].idxmax()])
 
     properties = {
-        "clf": ["LR"],
+        "clf": ["TF-MLP (2048, 1024) drp=0.75"],
         "n_labels": 10000,
         "depth": [2],
         "resolution": [16],

@@ -12,104 +12,40 @@ def relu_bn(inputs):
     return bn
 
 
-def make_resnet_encoder_block(x, filters, ident, downsample=True):
-    f1, f2, f3 = filters
-    y = layers.Conv2D(
-        kernel_size=1,
-        strides=1,
-        filters=f1,
-        padding="same", name="r-down.1-{}".format(ident))(x)
-    y = relu_bn(y)
-    y = layers.Conv2D(
-        kernel_size=3,
-        strides=(1 if not downsample else 2),
-        filters=f2,
-        padding="same", name="r-down.2-{}".format(ident))(y)
-    y = relu_bn(y)
-    y = layers.Conv2D(
-        kernel_size=1,
-        strides=1,
-        filters=f3,
-        padding="same", name="r-down.3-{}".format(ident))(y)
-
-    if downsample:
-        x = layers.AvgPool2D(pool_size=(2, 2), strides=2)(x)
-        x = layers.Conv2D(
-            kernel_size=1,
-            strides=1,
-            filters=f3,
-            padding="same", name="r-down.pass-{}".format(ident))(x)
-
-    out = layers.Add()([x, y])
-    out = relu_bn(out)
-    return out
-
-
-def make_resnet_decoder_block(x, filters, ident, upsample=True):
-    f1, f2, f3 = filters
-    y = layers.Conv2DTranspose(
-        kernel_size=1,
-        strides=1,
-        filters=f1,
-        padding="same", name="r-up.1-{}".format(ident))(x)
-    y = relu_bn(y)
-    y = layers.Conv2DTranspose(
-        kernel_size=3,
-        strides=(1 if not upsample else 2),
-        filters=f2,
-        padding="same", name="r-up.2-{}".format(ident))(y)
-    y = relu_bn(y)
-    y = layers.Conv2DTranspose(
-        kernel_size=1,
-        strides=1,
-        filters=f3,
-        padding="same", name="r-up.3-{}".format(ident))(y)
-
-    if upsample:
-        x = layers.UpSampling2D(size=(2, 2))(x)
-        x = layers.Conv2DTranspose(
-            kernel_size=1,
-            strides=1,
-            filters=f3,
-            padding="same", name="r-up.pass-{}".format(ident))(x)
-
-    out = layers.Add()([x, y])
-    out = relu_bn(out)
-    return out
-
-
 def make_encoder_stack(input_layer, depth, resolution):
     x = input_layer
     for i in range(depth):
-        filters = [
-            16 * (i + 1) * resolution,
-            16 * (i + 1) * resolution,
-            32 * (i + 1) * resolution
-        ]
-        x = make_resnet_encoder_block(x, filters, ident=i + 1)
+        x = layers.AvgPool2D()(x)
+        x = layers.SeparableConv2D(
+            kernel_size=3,
+            strides=1,
+            filters=16 * (i + 1) * resolution,
+            padding="same", name="down-{}".format(i + 1))(x)
+        x = relu_bn(x)
     return x
 
 
 def make_decoder_stack(feature_map_after_bottleneck, depth, resolution):
     x = feature_map_after_bottleneck
     for i in range(depth - 1):
-        filters = [
-            16 * (depth - i) * resolution,
-            16 * (depth - i) * resolution,
-            8 * (depth - i) * resolution,
-        ]
-        x = make_resnet_decoder_block(x, filters, ident=i + 1)
+        x = layers.UpSampling2D()(x)
+        x = layers.Conv2DTranspose(
+            kernel_size=3,
+            strides=1,
+            filters=16 * (depth - i) * resolution,
+            padding="same", name="up-{}".format(i + 1))(x)
+        x = relu_bn(x)
     return x
 
 
-def residual_auto_encoder(
+def linear_auto_encoder(
         input_shape,
         embedding_size,
         embedding_type,
         embedding_activation,
         depth,
         resolution,
-        drop_rate=0.25
+        drop_rate,
 ):
     input_sizes = {512: 0, 256: 0, 128: 0, 64: 0, 32: 0, }
     assert input_shape[0] == input_shape[1], "Only Squared Inputs! - {} / {} -".format(input_shape[0], input_shape[1])
@@ -117,7 +53,6 @@ def residual_auto_encoder(
     input_layer = layers.Input(batch_shape=(None, input_shape[0], input_shape[1], input_shape[2]))
 
     x = make_encoder_stack(input_layer, depth, resolution)
-    print(x.shape)
     emb = Embedding(
         embedding_size=embedding_size,
         embedding_type=embedding_type,
@@ -130,9 +65,8 @@ def residual_auto_encoder(
     reshape_layer_dim = input_shape[0] / (2 ** depth)
     assert reshape_layer_dim in [2 ** x for x in [0, 1, 2, 3, 4, 5, 6]]
 
-    x = layers.Dense(int(reshape_layer_dim * reshape_layer_dim * 64), name='dense_1')(bottleneck)
-    x = tf.reshape(x, [-1, int(reshape_layer_dim), int(reshape_layer_dim), 64], name='Reshape_Layer')
-    print(x.shape)
+    x = layers.Dense(int(reshape_layer_dim * reshape_layer_dim * embedding_size * 2), name='dense_1')(bottleneck)
+    x = tf.reshape(x, [-1, int(reshape_layer_dim), int(reshape_layer_dim), embedding_size * 2], name='Reshape_Layer')
 
     x = make_decoder_stack(x, depth, resolution)
 
@@ -140,14 +74,14 @@ def residual_auto_encoder(
     return input_layer, bottleneck, output
 
 
-def residual_variational_auto_encoder(
+def linear_variational_auto_encoder(
         input_shape,
         embedding_size,
         embedding_type,
         embedding_activation,
         depth,
         resolution,
-        drop_rate=0.25
+        drop_rate,
 ):
     input_sizes = {512: 0, 256: 0, 128: 0, 64: 0, 32: 0, }
     assert input_shape[0] == input_shape[1], "Only Squared Inputs! - {} / {} -".format(input_shape[0], input_shape[1])
@@ -177,8 +111,8 @@ def residual_variational_auto_encoder(
     reshape_layer_dim = input_shape[0] / (2 ** depth)
     assert reshape_layer_dim in [2 ** x for x in [0, 1, 2, 3, 4, 5, 6]]
 
-    x = layers.Dense(int(reshape_layer_dim * reshape_layer_dim * 64), name='dense_1')(latent_inputs)
-    x = tf.reshape(x, [-1, int(reshape_layer_dim), int(reshape_layer_dim), 64], name='Reshape_Layer')
+    x = layers.Dense(int(reshape_layer_dim * reshape_layer_dim * embedding_size * 2), name='dense_1')(latent_inputs)
+    x = tf.reshape(x, [-1, int(reshape_layer_dim), int(reshape_layer_dim), embedding_size * 2], name='Reshape_Layer')
 
     x = make_decoder_stack(x, depth, resolution)
 

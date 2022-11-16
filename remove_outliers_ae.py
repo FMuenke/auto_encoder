@@ -4,6 +4,7 @@ import argparse
 import numpy as np
 from auto_encoder.data_set import DataSet
 from auto_encoder.auto_encoder import AutoEncoder
+from auto_encoder.variational_auto_encoder import VariationalAutoEncoder
 
 from auto_encoder.util import save_dict, load_dict
 
@@ -50,7 +51,7 @@ def load_data_set(model, path_to_data, known_classes, only_known_classes):
             data_frame["status_id"].append(1)
             data_y.append(class_mapping[cls])
         data = i.load_x()
-        pred = model.inference(data)
+        pred = model.encode(data)
 
         if data_x is None:
             data_x = pred
@@ -67,8 +68,19 @@ def get_data_sets(ds_path_train, ds_path_test, model_path):
     cfg = Config()
     if os.path.isfile(os.path.join(model_path, "opt.json")):
         cfg.opt = load_dict(os.path.join(model_path, "opt.json"))
-    ae = AutoEncoder(model_path, cfg)
-    ae.build(False, add_decoder=False)
+
+    if "type" in cfg.opt:
+        if cfg.opt["type"] == "variational-autoencoder":
+            ae = VariationalAutoEncoder(model_path, cfg)
+            ae.build(add_decoder=True)
+        elif cfg.opt["type"] == "variational-autoencoder":
+            ae = AutoEncoder(model_path, cfg)
+            ae.build(add_decoder=True)
+        else:
+            raise Exception("UNKNOWN TYPE: {}".format(cfg.opt["type"]))
+    else:
+        ae = AutoEncoder(model_path, cfg)
+        ae.build(add_decoder=True)
 
     known_classes = ["manhole", "stormdrain"]
 

@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from auto_encoder.auto_encoder import AutoEncoder
 from auto_encoder.residual import residual_variational_auto_encoder
 from auto_encoder.fully_connected import variational_fully_connected_auto_encoder
+from auto_encoder.linear import linear_variational_auto_encoder
 from auto_encoder.variational_auto_encoder_engine import VariationalAutoEncoderEngine
 
 from auto_encoder.util import prepare_input
@@ -16,9 +17,19 @@ class VariationalAutoEncoder(AutoEncoder):
 
         self.metric_to_track = "val_loss"
 
-    def get_backbone(self, add_decoder):
+    def get_backbone(self):
         if self.backbone in ["resnet", "residual"]:
             encoder, decoder = residual_variational_auto_encoder(
+                input_shape=self.input_shape,
+                embedding_size=self.embedding_size,
+                embedding_type=self.embedding_type,
+                embedding_activation=self.embedding_activation,
+                depth=self.depth,
+                resolution=self.resolution,
+                drop_rate=self.drop_rate,
+            )
+        elif self.backbone in ["linear", "lin"]:
+            encoder, decoder = linear_variational_auto_encoder(
                 input_shape=self.input_shape,
                 embedding_size=self.embedding_size,
                 embedding_type=self.embedding_type,
@@ -38,7 +49,7 @@ class VariationalAutoEncoder(AutoEncoder):
         return VariationalAutoEncoderEngine(encoder, decoder)
 
     def build(self, compile_model=True, add_decoder=True):
-        self.model = self.get_backbone(add_decoder=True)
+        self.model = self.get_backbone()
         self.model(np.zeros((1, self.input_shape[0], self.input_shape[1], self.input_shape[2])))
         self.load()
         if compile_model:

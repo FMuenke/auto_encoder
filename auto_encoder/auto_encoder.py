@@ -7,8 +7,9 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping, CSVLogger
 
 
-from auto_encoder.residual import residual_auto_encoder, asymmetric_residual_auto_encoder
+from auto_encoder.residual import residual_auto_encoder
 from auto_encoder.fully_connected import fully_connected_auto_encoder
+from auto_encoder.linear import linear_auto_encoder
 from auto_encoder.data_generator import DataGenerator
 
 from auto_encoder.util import check_n_make_dir
@@ -76,19 +77,16 @@ class AutoEncoder:
         res = np.array(res)
         return res
 
+    def encode(self, data):
+        data = prepare_input(data, self.input_shape)
+        data = np.expand_dims(data, axis=0)
+        res = self.model.predict_on_batch(data)
+        res = np.array(res)
+        return res
+
     def get_backbone(self):
         if self.backbone in ["resnet", "residual"]:
             x_input, bottleneck, output = residual_auto_encoder(
-                input_shape=self.input_shape,
-                embedding_size=self.embedding_size,
-                embedding_type=self.embedding_type,
-                embedding_activation=self.embedding_activation,
-                depth=self.depth,
-                resolution=self.resolution,
-                drop_rate=self.drop_rate,
-            )
-        elif self.backbone in ["asym-residual", "asymmetric-residual"]:
-            x_input, bottleneck, output = asymmetric_residual_auto_encoder(
                 input_shape=self.input_shape,
                 embedding_size=self.embedding_size,
                 embedding_type=self.embedding_type,
@@ -103,6 +101,16 @@ class AutoEncoder:
                 embedding_size=self.embedding_size,
                 embedding_activation=self.embedding_activation,
                 drop_rate=self.drop_rate
+            )
+        elif self.backbone in ["linear", "lin"]:
+            x_input, bottleneck, output = linear_auto_encoder(
+                input_shape=self.input_shape,
+                embedding_size=self.embedding_size,
+                embedding_type=self.embedding_type,
+                embedding_activation=self.embedding_activation,
+                depth=self.depth,
+                resolution=self.resolution,
+                drop_rate=self.drop_rate,
             )
         else:
             raise ValueError("{} Backbone was not recognised".format(self.backbone))

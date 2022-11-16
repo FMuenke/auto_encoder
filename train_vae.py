@@ -42,7 +42,7 @@ def main(args_):
     ds.load()
     train_images, test_image = ds.get_data(0.8)
 
-    augmentations = Augmentations(color=False)
+    augmentations = Augmentations()
 
     check_n_make_dir(mf)
     save_dict(Config().opt, os.path.join(mf, "opt.json"))

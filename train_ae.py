@@ -2,6 +2,7 @@ import os
 import tensorflow as tf
 from auto_encoder.data_set import DataSet
 from auto_encoder.auto_encoder import AutoEncoder
+from auto_encoder.variational_auto_encoder import VariationalAutoEncoder
 
 from auto_encoder.augmentations import Augmentations, EncoderTask
 
@@ -15,6 +16,7 @@ print("TF VERSION: ", tf.__version__)
 class Config:
     def __init__(self):
         self.opt = {
+            "type": "autoencoder",
             "task": "reconstruction",  # reconstruction, denoise, completion
             "task_difficulty": 0.25,
             "backbone": "residual",
@@ -39,19 +41,30 @@ def main(args_):
     ds = DataSet(df)
 
     cfg = Config()
+    cfg.opt["type"] = args_.type
     cfg.opt["task"] = args_.task
     cfg.opt["task_difficulty"] = float(args_.task_difficulty)
     cfg.opt["embedding_size"] = int(args_.embedding_size)
     cfg.opt["embedding_type"] = args_.embedding_type
     cfg.opt["embedding_activation"] = args_.embedding_activation
-    # cfg.opt["drop_rate"] = float(args_.drop_rate)
+    cfg.opt["drop_rate"] = float(args_.drop_rate)
 
     cfg.opt["backbone"] = args_.backbone
     cfg.opt["resolution"] = int(args_.resolution)
     cfg.opt["depth"] = int(args_.depth)
 
-    ae = AutoEncoder(mf, cfg)
-    ae.build(add_decoder=True)
+    if "type" in cfg.opt:
+        if cfg.opt["type"] == "variational-autoencoder":
+            ae = VariationalAutoEncoder(mf, cfg)
+            ae.build(add_decoder=True)
+        elif cfg.opt["type"] == "autoencoder":
+            ae = AutoEncoder(mf, cfg)
+            ae.build(add_decoder=True)
+        else:
+            raise Exception("UNKNOWN TYPE: {}".format(cfg.opt["type"]))
+    else:
+        ae = AutoEncoder(mf, cfg)
+        ae.build(add_decoder=True)
 
     ds.load()
     train_images, test_image = ds.get_data(0.8)
@@ -89,6 +102,7 @@ def parse_args():
         help="Path to directory with dataset",
     )
     parser.add_argument("--model", "-m", help="Path to model")
+    parser.add_argument("--type", "-ty", default="autoencoder", help="Path to model")
     parser.add_argument("--task", "-t", default="reconstruction", help="Path to model")
     parser.add_argument("--task_difficulty", "-difficulty", default=0.0, help="Training Mode")
     parser.add_argument("--embedding_size", "-size", default=128, help="Training Mode")
@@ -96,8 +110,8 @@ def parse_args():
     parser.add_argument("--embedding_activation", "-activation", default="linear", help="Training Mode")
     parser.add_argument("--drop_rate", "-drop", default=0.0, help="Dropout during Embedding")
     parser.add_argument("--backbone", "-bb", default="residual", help="Auto Encoder Backbone")
-    parser.add_argument("--depth", "-d", help="Backbone Depth")
-    parser.add_argument("--resolution", "-r", help="Backbone Resolution")
+    parser.add_argument("--depth", "-d", default=4, help="Backbone Depth")
+    parser.add_argument("--resolution", "-r", default=4, help="Backbone Resolution")
     return parser.parse_args()
 
 

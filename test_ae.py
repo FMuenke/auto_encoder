@@ -4,6 +4,7 @@ import numpy as np
 from tqdm import tqdm
 from auto_encoder.data_set import DataSet
 from auto_encoder.auto_encoder import AutoEncoder
+from auto_encoder.variational_auto_encoder import VariationalAutoEncoder
 
 from auto_encoder.util import check_n_make_dir, load_dict, save_dict
 
@@ -36,8 +37,18 @@ def main(args_):
     results_folder = os.path.join(mf, "results")
     check_n_make_dir(results_folder, True)
 
-    ae = AutoEncoder(mf, cfg)
-    ae.build(False)
+    if "type" in cfg.opt:
+        if cfg.opt["type"] == "variational-autoencoder":
+            ae = VariationalAutoEncoder(mf, cfg)
+            ae.build(add_decoder=True)
+        elif cfg.opt["type"] == "variational-autoencoder":
+            ae = AutoEncoder(mf, cfg)
+            ae.build(add_decoder=True)
+        else:
+            raise Exception("UNKNOWN TYPE: {}".format(cfg.opt["type"]))
+    else:
+        ae = AutoEncoder(mf, cfg)
+        ae.build(add_decoder=True)
 
     err = []
 
