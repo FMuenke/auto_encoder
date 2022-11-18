@@ -72,15 +72,15 @@ def get_data_sets(ds_path_train, ds_path_test, model_path):
     if "type" in cfg.opt:
         if cfg.opt["type"] == "variational-autoencoder":
             ae = VariationalAutoEncoder(model_path, cfg)
-            ae.build(add_decoder=True)
+            ae.build(add_decoder=False)
         elif cfg.opt["type"] == "variational-autoencoder":
             ae = AutoEncoder(model_path, cfg)
-            ae.build(add_decoder=True)
+            ae.build(add_decoder=False)
         else:
             raise Exception("UNKNOWN TYPE: {}".format(cfg.opt["type"]))
     else:
         ae = AutoEncoder(model_path, cfg)
-        ae.build(add_decoder=True)
+        ae.build(add_decoder=False)
 
     known_classes = ["manhole", "stormdrain"]
 

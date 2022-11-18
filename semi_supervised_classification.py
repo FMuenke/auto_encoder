@@ -43,15 +43,15 @@ def get_data_sets(ds_path_train, ds_path_test, model_path, class_mapping):
     if "type" in cfg.opt:
         if cfg.opt["type"] == "variational-autoencoder":
             ae = VariationalAutoEncoder(model_path, cfg)
-            ae.build(add_decoder=True)
+            ae.build(add_decoder=False)
         elif cfg.opt["type"] == "autoencoder":
             ae = AutoEncoder(model_path, cfg)
-            ae.build(add_decoder=True)
+            ae.build(add_decoder=False)
         else:
             raise Exception("UNKNOWN TYPE: {}".format(cfg.opt["type"]))
     else:
         ae = AutoEncoder(model_path, cfg)
-        ae.build(add_decoder=True)
+        ae.build(add_decoder=False)
 
     x_train, y_train = load_data_set(ae, ds_path_train, class_mapping)
     np.save(os.path.join(model_path, "x_train.npy"), x_train)

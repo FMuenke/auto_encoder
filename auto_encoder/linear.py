@@ -15,24 +15,24 @@ def relu_bn(inputs):
 def make_encoder_stack(input_layer, depth, resolution):
     x = input_layer
     for i in range(depth):
-        x = layers.AvgPool2D()(x)
         x = layers.SeparableConv2D(
             kernel_size=3,
             strides=1,
-            filters=16 * (i + 1) * resolution,
+            filters=16 * 2**i * resolution,
             padding="same", name="down-{}".format(i + 1))(x)
         x = relu_bn(x)
+        x = layers.AvgPool2D()(x)
     return x
 
 
 def make_decoder_stack(feature_map_after_bottleneck, depth, resolution):
     x = feature_map_after_bottleneck
-    for i in range(depth - 1):
+    for i in range(depth):
         x = layers.UpSampling2D()(x)
         x = layers.Conv2DTranspose(
             kernel_size=3,
             strides=1,
-            filters=16 * (depth - i) * resolution,
+            filters=16 * 2**(depth - i - 1) * resolution,
             padding="same", name="up-{}".format(i + 1))(x)
         x = relu_bn(x)
     return x
@@ -53,6 +53,8 @@ def linear_auto_encoder(
     input_layer = layers.Input(batch_shape=(None, input_shape[0], input_shape[1], input_shape[2]))
 
     x = make_encoder_stack(input_layer, depth, resolution)
+    n_features = int(x.shape[-1])
+
     emb = Embedding(
         embedding_size=embedding_size,
         embedding_type=embedding_type,
@@ -65,12 +67,13 @@ def linear_auto_encoder(
     reshape_layer_dim = input_shape[0] / (2 ** depth)
     assert reshape_layer_dim in [2 ** x for x in [0, 1, 2, 3, 4, 5, 6]]
 
-    x = layers.Dense(int(reshape_layer_dim * reshape_layer_dim * embedding_size * 2), name='dense_1')(bottleneck)
-    x = tf.reshape(x, [-1, int(reshape_layer_dim), int(reshape_layer_dim), embedding_size * 2], name='Reshape_Layer')
+    x = layers.Dense(int(reshape_layer_dim * reshape_layer_dim * n_features), name='dense_1')(bottleneck)
+    x = layers.LeakyReLU()(x)
+    x = tf.reshape(x, [-1, int(reshape_layer_dim), int(reshape_layer_dim), n_features], name='Reshape_Layer')
 
     x = make_decoder_stack(x, depth, resolution)
 
-    output = layers.Conv2DTranspose(3, 3, 2, padding='same', activation='linear', name='conv_transpose_5')(x)
+    output = layers.Conv2DTranspose(3, 3, 1, padding='same', activation='linear', name='conv_transpose_5')(x)
     return input_layer, bottleneck, output
 
 
@@ -90,7 +93,7 @@ def linear_variational_auto_encoder(
     input_layer = layers.Input(batch_shape=(None, input_shape[0], input_shape[1], input_shape[2]))
 
     x = make_encoder_stack(input_layer, depth, resolution)
-
+    n_features = int(x.shape[-1])
     emb = Embedding(
         embedding_size=embedding_size,
         embedding_type=embedding_type,
@@ -111,12 +114,13 @@ def linear_variational_auto_encoder(
     reshape_layer_dim = input_shape[0] / (2 ** depth)
     assert reshape_layer_dim in [2 ** x for x in [0, 1, 2, 3, 4, 5, 6]]
 
-    x = layers.Dense(int(reshape_layer_dim * reshape_layer_dim * embedding_size * 2), name='dense_1')(latent_inputs)
-    x = tf.reshape(x, [-1, int(reshape_layer_dim), int(reshape_layer_dim), embedding_size * 2], name='Reshape_Layer')
+    x = layers.Dense(int(reshape_layer_dim * reshape_layer_dim * n_features), name='dense_1')(latent_inputs)
+    x = layers.LeakyReLU()(x)
+    x = tf.reshape(x, [-1, int(reshape_layer_dim), int(reshape_layer_dim), n_features], name='Reshape_Layer')
 
     x = make_decoder_stack(x, depth, resolution)
 
-    output = layers.Conv2DTranspose(3, 3, 2, padding='same', activation='linear', name='conv_transpose_5')(x)
+    output = layers.Conv2DTranspose(3, 3, 1, padding='same', activation='linear', name='conv_transpose_5')(x)
     decoder = keras.Model(latent_inputs, output, name="decoder")
 
     return encoder, decoder

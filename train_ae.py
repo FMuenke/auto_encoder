@@ -107,7 +107,7 @@ def parse_args():
     parser.add_argument("--task_difficulty", "-difficulty", default=0.0, help="Training Mode")
     parser.add_argument("--embedding_size", "-size", default=128, help="Training Mode")
     parser.add_argument("--embedding_type", "-type", default="glob_avg", help="Training Mode")
-    parser.add_argument("--embedding_activation", "-activation", default="linear", help="Training Mode")
+    parser.add_argument("--embedding_activation", "-activation", default="leaky_relu", help="Training Mode")
     parser.add_argument("--drop_rate", "-drop", default=0.0, help="Dropout during Embedding")
     parser.add_argument("--backbone", "-bb", default="residual", help="Auto Encoder Backbone")
     parser.add_argument("--depth", "-d", default=4, help="Backbone Depth")
