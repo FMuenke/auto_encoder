@@ -10,6 +10,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, Early
 from auto_encoder.residual import residual_auto_encoder
 from auto_encoder.fully_connected import fully_connected_auto_encoder
 from auto_encoder.linear import linear_auto_encoder
+from auto_encoder.mlp import mlp_auto_encoder
 from auto_encoder.data_generator import DataGenerator
 
 from auto_encoder.util import check_n_make_dir
@@ -112,6 +113,16 @@ class AutoEncoder:
                 resolution=self.resolution,
                 drop_rate=self.drop_rate,
             )
+        elif self.backbone in ["mlp"]:
+            x_input, bottleneck, output = mlp_auto_encoder(
+                input_shape=self.input_shape,
+                embedding_size=self.embedding_size,
+                embedding_type=self.embedding_type,
+                embedding_activation=self.embedding_activation,
+                depth=self.depth,
+                resolution=self.resolution,
+                drop_rate=self.drop_rate,
+            )
         else:
             raise ValueError("{} Backbone was not recognised".format(self.backbone))
 
@@ -182,6 +193,7 @@ class AutoEncoder:
 
         callback_list = [checkpoint, reduce_lr, early_stop, csv_logger]
 
+        print("[INFO] Training started.")
         history = self.model.fit(
             x=training_generator,
             validation_data=validation_generator,

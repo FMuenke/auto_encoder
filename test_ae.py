@@ -41,7 +41,7 @@ def main(args_):
         if cfg.opt["type"] == "variational-autoencoder":
             ae = VariationalAutoEncoder(mf, cfg)
             ae.build(add_decoder=True)
-        elif cfg.opt["type"] == "variational-autoencoder":
+        elif cfg.opt["type"] == "autoencoder":
             ae = AutoEncoder(mf, cfg)
             ae.build(add_decoder=True)
         else:
@@ -66,7 +66,7 @@ def main(args_):
     err = np.mean(err)
     s = "[RESULTS]: MEA: {}".format(err)
     print(s)
-    save_dict({"MAE": err}, os.path.join(mf, "reconstruction_error.json"))
+    save_dict({"MAE": str(err)}, os.path.join(mf, "reconstruction_error.json"))
 
 
 def parse_args():

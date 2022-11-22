@@ -26,8 +26,13 @@ def load_model(model_folder):
             else:
                 df[k] = opt[k]
 
+        df["structure"] = "{}-{}".format(str(df["type"][0]), str(df["backbone"][0]))
+
         logs_df = pd.read_csv(os.path.join(model_folder, "logs.csv"))
-        df["min_val_mse"] = logs_df["val_mse"].min()
+        if "val_mse" not in logs_df:
+            df["min_val_mse"] = logs_df["val_reconstruction_loss"].min()
+        else:
+            df["min_val_mse"] = logs_df["val_mse"].min()
 
     return df
 
@@ -57,21 +62,24 @@ def main(args_):
     print(data_frame.iloc[data_frame['Accuracy'].idxmax()])
 
     properties = {
-        "clf": ["TF-MLP (2048, 1024) drp=0.75"],
+        # "type": "autoencoder",
+        "clf": ["LR"],
         "n_labels": 10000,
-        "depth": [2],
-        "resolution": [16],
+        # "depth": [2],
+        # "resolution": [16],
         # "embedding_size": 256,
-        "drop_rate": 0.0,
-        # "task": "reconstruction",
+        # "drop_rate": 0.0,
+        "task": "reconstruction",
         # "task_difficulty": 0.25,
         "embedding_type": "glob_avg",
-        "embedding_activation": "linear",
-        "backbone": "residual",
+        "embedding_activation": "leaky_relu",
+        # "backbone": "residual",
     }
     lr_data_frame = select_properties(data_frame, properties)
     print(lr_data_frame['Accuracy'].max())
-    sns.lineplot(data=lr_data_frame, x="task_difficulty", y="Accuracy", hue="task")
+    g = sns.FacetGrid(lr_data_frame, col="resolution", row="embedding_size", hue="structure")
+    g.map(sns.lineplot, "depth", "Accuracy")
+    g.add_legend()
     plt.show()
 
 
