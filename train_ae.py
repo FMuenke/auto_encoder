@@ -52,6 +52,8 @@ def main(args_):
     cfg.opt["backbone"] = args_.backbone
     cfg.opt["resolution"] = int(args_.resolution)
     cfg.opt["depth"] = int(args_.depth)
+    cfg.opt["use_skip"] = args_.use_skip
+    cfg.opt["use_asymmetrical"] = args_.use_asymmetrical
 
     if "type" in cfg.opt:
         if cfg.opt["type"] == "variational-autoencoder":
@@ -112,6 +114,8 @@ def parse_args():
     parser.add_argument("--backbone", "-bb", default="residual", help="Auto Encoder Backbone")
     parser.add_argument("--depth", "-d", default=4, help="Backbone Depth")
     parser.add_argument("--resolution", "-r", default=4, help="Backbone Resolution")
+    parser.add_argument("--use_skip", "-s", default=False, type=bool, help="Add a skip connection to the bottleneck")
+    parser.add_argument("--use_asymmetrical", "-asym", default=False, type=bool, help="Reduce the decoder size to a minimum")
     return parser.parse_args()
 
 

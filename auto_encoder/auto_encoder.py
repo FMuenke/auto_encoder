@@ -11,12 +11,13 @@ from auto_encoder.residual import residual_auto_encoder
 from auto_encoder.fully_connected import fully_connected_auto_encoder
 from auto_encoder.linear import linear_auto_encoder
 from auto_encoder.mlp import mlp_auto_encoder
+from auto_encoder.vision_transformer import vit_auto_encoder
 from auto_encoder.data_generator import DataGenerator
 
 from auto_encoder.util import check_n_make_dir
 from auto_encoder.util import prepare_input
 
-os.environ['CUDA_VISIBLE_DEVICES'] = "1"
+os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 
 # try:
     # physical_devices = tf.config.experimental.list_physical_devices('GPU')
@@ -49,9 +50,17 @@ class AutoEncoder:
             cfg.opt["embedding_activation"] = "linear"
         if "drop_rate" not in cfg.opt:
             cfg.opt["drop_rate"] = 0.0
+        if "skip" not in cfg.opt:
+            cfg.opt["skip"] = False
+        if "asymmetrical" not in cfg.opt:
+            cfg.opt["asymmetrical"] = False
         self.embedding_type = cfg.opt["embedding_type"]
         self.embedding_activation = cfg.opt["embedding_activation"]
         self.drop_rate = cfg.opt["drop_rate"]
+        self.asymmetrical = cfg.opt["asymmetrical"]
+        self.skip_connection = cfg.opt["skip"]
+
+        print(self.asymmetrical)
 
         self.model = None
 
@@ -95,6 +104,8 @@ class AutoEncoder:
                 depth=self.depth,
                 resolution=self.resolution,
                 drop_rate=self.drop_rate,
+                skip=self.skip_connection,
+                asymmetrical=self.asymmetrical,
             )
         elif self.backbone in ["fully_connected", "fc"]:
             x_input, bottleneck, output = fully_connected_auto_encoder(
@@ -112,6 +123,8 @@ class AutoEncoder:
                 depth=self.depth,
                 resolution=self.resolution,
                 drop_rate=self.drop_rate,
+                skip=self.skip_connection,
+                asymmetrical=self.asymmetrical
             )
         elif self.backbone in ["mlp"]:
             x_input, bottleneck, output = mlp_auto_encoder(
@@ -122,6 +135,18 @@ class AutoEncoder:
                 depth=self.depth,
                 resolution=self.resolution,
                 drop_rate=self.drop_rate,
+                asymmetrical=self.asymmetrical,
+            )
+        elif self.backbone in ["vision_transformer", "vit"]:
+            x_input, bottleneck, output = vit_auto_encoder(
+                input_shape=self.input_shape,
+                embedding_size=self.embedding_size,
+                embedding_type=self.embedding_type,
+                embedding_activation=self.embedding_activation,
+                depth=self.depth,
+                resolution=self.resolution,
+                drop_rate=self.drop_rate,
+                asymmetrical=self.asymmetrical
             )
         else:
             raise ValueError("{} Backbone was not recognised".format(self.backbone))

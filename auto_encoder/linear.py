@@ -46,6 +46,8 @@ def linear_auto_encoder(
         depth,
         resolution,
         drop_rate,
+        skip=False,
+        asymmetrical=False,
 ):
     input_sizes = {512: 0, 256: 0, 128: 0, 64: 0, 32: 0, }
     assert input_shape[0] == input_shape[1], "Only Squared Inputs! - {} / {} -".format(input_shape[0], input_shape[1])
@@ -67,11 +69,25 @@ def linear_auto_encoder(
     reshape_layer_dim = input_shape[0] / (2 ** depth)
     assert reshape_layer_dim in [2 ** x for x in [0, 1, 2, 3, 4, 5, 6]]
 
-    x = layers.Dense(int(reshape_layer_dim * reshape_layer_dim * n_features), name='dense_1')(bottleneck)
-    x = layers.LeakyReLU()(x)
-    x = tf.reshape(x, [-1, int(reshape_layer_dim), int(reshape_layer_dim), n_features], name='Reshape_Layer')
+    if skip:
+        x_pass = layers.Conv2D(embedding_size, (1, 1))(x)
+        x_pass = relu_bn(x_pass)
+        x_pass = layers.Flatten()(x_pass)
+        x_pass = layers.Dropout(drop_rate)(x_pass)
+        x = layers.Concatenate()([bottleneck, x_pass])
+    else:
+        x = bottleneck
 
-    x = make_decoder_stack(x, depth, resolution)
+    if asymmetrical:
+        x = layers.Dense(int(reshape_layer_dim * reshape_layer_dim * embedding_size), name='dense_1')(x)
+        x = layers.LeakyReLU()(x)
+        x = tf.reshape(x, [-1, int(reshape_layer_dim), int(reshape_layer_dim), embedding_size], name='Reshape_Layer')
+        x = make_decoder_stack(x, depth, resolution=1)
+    else:
+        x = layers.Dense(int(reshape_layer_dim * reshape_layer_dim * n_features), name='dense_1')(x)
+        x = layers.LeakyReLU()(x)
+        x = tf.reshape(x, [-1, int(reshape_layer_dim), int(reshape_layer_dim), n_features], name='Reshape_Layer')
+        x = make_decoder_stack(x, depth, resolution)
 
     output = layers.Conv2DTranspose(3, 3, 1, padding='same', activation='linear', name='conv_transpose_5')(x)
     return input_layer, bottleneck, output

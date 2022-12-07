@@ -1,8 +1,13 @@
 from tensorflow.keras import layers
 
 
+def create_dense_encoder(x, embedding_size):
+    bottleneck = layers.Dense(embedding_size)(x)
+    return bottleneck
+
+
 class Embedding:
-    def __init__(self, embedding_size, embedding_type="flatten", activation="linear", drop_rate=0.25):
+    def __init__(self, embedding_size, embedding_type="flatten", activation="linear", drop_rate=0.25, mode="2d"):
         self.embedding_size = embedding_size
         self.embedding_type = embedding_type
 
@@ -10,33 +15,34 @@ class Embedding:
 
         self.drop_rate = drop_rate
 
-    def create_dense_encoder(self, x, embedding_size):
-        if self.drop_rate > 0:
-            x = layers.Dropout(self.drop_rate)(x)
-        bottleneck = layers.Dense(embedding_size)(x)
-        return bottleneck
+        self.mode = mode
+
+    def add_pooling_op(self, x, pooling):
+        if pooling == "max" and self.mode == "2d":
+            return layers.GlobalMaxPool2D()(x)
+        elif pooling == "max" and self.mode == "1d":
+            return layers.GlobalMaxPool1D()(x)
+        elif pooling == "avg" and self.mode == "2d":
+            return layers.GlobalAveragePooling2D()(x)
+        elif pooling == "avg" and self.mode == "1d":
+            return layers.GlobalAveragePooling1D()(x)
+        else:
+            raise Exception("Unknown Pooling - {}/{} -".format(self.mode, pooling))
 
     def build(self, x):
         if self.embedding_type == "None":
             latent = x
-            bottleneck = self.create_dense_encoder(latent, self.embedding_size)
-        elif self.embedding_type == "glob_avg_dense":
-            latent = layers.GlobalAveragePooling2D()(x)
-            latent = self.create_dense_encoder(latent, self.embedding_size * 2)
-            latent = layers.LeakyReLU()(latent)
-            bottleneck = self.create_dense_encoder(latent, self.embedding_size)
+            bottleneck = create_dense_encoder(latent, self.embedding_size)
         elif self.embedding_type == "flatten":
             latent = layers.Flatten()(x)
-            bottleneck = self.create_dense_encoder(latent, self.embedding_size)
+            bottleneck = create_dense_encoder(latent, self.embedding_size)
         elif self.embedding_type == "glob_avg":
-            latent = layers.GlobalAveragePooling2D()(x)
-            bottleneck = self.create_dense_encoder(latent, self.embedding_size)
+            latent = self.add_pooling_op(x, "avg")
+            bottleneck = create_dense_encoder(latent, self.embedding_size)
         elif self.embedding_type == "glob_max":
-            latent = layers.GlobalMaxPool2D()(x)
-            bottleneck = self.create_dense_encoder(latent, self.embedding_size)
+            latent = self.add_pooling_op(x, "max")
+            bottleneck = create_dense_encoder(latent, self.embedding_size)
         elif self.embedding_type == "conv":
-            if self.drop_rate > 0:
-                x = layers.SpatialDropout2D(self.drop_rate)(x)
             x = layers.Conv2D(self.embedding_size, (1, 1))(x)
             bottleneck = layers.GlobalAveragePooling2D()(x)
         else:
@@ -54,5 +60,8 @@ class Embedding:
             bottleneck = layers.Softmax()(bottleneck)
         elif self.activation == "sigmoid":
             bottleneck = layers.Activation("sigmoid")(bottleneck)
+
+        if self.drop_rate > 0:
+            bottleneck = layers.Dropout(self.drop_rate)(bottleneck)
 
         return bottleneck

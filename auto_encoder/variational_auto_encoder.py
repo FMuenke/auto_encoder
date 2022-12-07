@@ -50,7 +50,6 @@ class VariationalAutoEncoder(AutoEncoder):
 
     def build(self, compile_model=True, add_decoder=True):
         self.model = self.get_backbone()
-        self.model(np.zeros((1, self.input_shape[0], self.input_shape[1], self.input_shape[2])))
         self.load()
         if compile_model:
             self.model.compile(optimizer=self.optimizer)
