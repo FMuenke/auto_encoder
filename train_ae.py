@@ -48,12 +48,13 @@ def main(args_):
     cfg.opt["embedding_type"] = args_.embedding_type
     cfg.opt["embedding_activation"] = args_.embedding_activation
     cfg.opt["drop_rate"] = float(args_.drop_rate)
+    cfg.opt["embedding_noise"] = float(args_.embedding_noise)
 
     cfg.opt["backbone"] = args_.backbone
     cfg.opt["resolution"] = int(args_.resolution)
     cfg.opt["depth"] = int(args_.depth)
-    cfg.opt["use_skip"] = args_.use_skip
-    cfg.opt["use_asymmetrical"] = args_.use_asymmetrical
+    cfg.opt["skip"] = args_.use_skip
+    cfg.opt["asymmetrical"] = args_.use_asymmetrical
 
     if "type" in cfg.opt:
         if cfg.opt["type"] == "variational-autoencoder":
@@ -111,6 +112,7 @@ def parse_args():
     parser.add_argument("--embedding_type", "-type", default="glob_avg", help="Training Mode")
     parser.add_argument("--embedding_activation", "-activation", default="leaky_relu", help="Training Mode")
     parser.add_argument("--drop_rate", "-drop", default=0.0, help="Dropout during Embedding")
+    parser.add_argument("--embedding_noise", "-noise", default=0.0, help="Gaussian Noise applied to embedding")
     parser.add_argument("--backbone", "-bb", default="residual", help="Auto Encoder Backbone")
     parser.add_argument("--depth", "-d", default=4, help="Backbone Depth")
     parser.add_argument("--resolution", "-r", default=4, help="Backbone Resolution")

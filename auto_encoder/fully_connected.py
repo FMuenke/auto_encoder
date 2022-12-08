@@ -17,7 +17,14 @@ def fcn_block(x, units, ident):
     return x
 
 
-def fully_connected_auto_encoder(input_shape, embedding_size, embedding_activation, drop_rate=0.25):
+def fully_connected_auto_encoder(
+        input_shape,
+        embedding_size,
+        embedding_activation,
+        drop_rate,
+        noise,
+        skip
+):
     input_layer = layers.Input(batch_shape=(None, input_shape[0], input_shape[1], input_shape[2]))
     n_inputs = int(input_shape[0] * input_shape[1] * input_shape[2])
     n_spatial = int(input_shape[0] * input_shape[1])
@@ -29,7 +36,9 @@ def fully_connected_auto_encoder(input_shape, embedding_size, embedding_activati
         embedding_size=embedding_size,
         embedding_type="None",
         activation=embedding_activation,
-        drop_rate=drop_rate
+        drop_rate=drop_rate,
+        noise=noise,
+        skip=skip,
     )
 
     bottleneck = emb.build(x)

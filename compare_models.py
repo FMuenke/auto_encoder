@@ -48,6 +48,8 @@ def load_model(model_folder):
         else:
             df["min_val_mse"] = logs_df["val_mse"].min()
 
+        df["epochs"] = len(logs_df) - 128
+
     return df
 
 
@@ -95,28 +97,32 @@ def main(args_):
         "type": ["autoencoder"],
         "clf": ["MLP"],
         "n_labels": 10000,
-        "depth": [2],
-        "resolution": [16],
-        # "embedding_size": [64],
-        "drop_rate": 0.0,
+        # "depth": [2],
+        # "resolution": [16],
+        "embedding_size": [128],
+        # "drop_rate": 0.0,
         "task": "reconstruction",
         "task_difficulty": 0.0,
         "embedding_type": "glob_avg",
         "embedding_activation": "leaky_relu",
-        "backbone": ["residual"],
-        # "skip": True,
-        # "asymmetrical": False
+        # "backbone": ["residual"],
+        "use_skip": True,
+        "asymmetrical": False
     }
+
+    sns.scatterplot(data=data_frame, x="epochs", y="Accuracy", hue="backbone")
+    plt.show()
+
     lr_data_frame = select_properties(data_frame, properties)
     print(lr_data_frame)
     best_performer = lr_data_frame[lr_data_frame['Accuracy'] == lr_data_frame['Accuracy'].max()].to_dict()
     for k in best_performer:
         print(k, best_performer[k])
-    # g = sns.FacetGrid(lr_data_frame, col="depth", row="embedding_size", hue="embedding_activation")
-    # g.map(sns.lineplot, "resolution", "Accuracy")
-    # g.add_legend()
+    g = sns.FacetGrid(lr_data_frame, col="resolution", row="depth", hue="skip")
+    g.map(sns.lineplot, "drop_rate", "Accuracy")
+    g.add_legend()
 
-    sns.catplot(data=lr_data_frame, x="embedding_size", y="Accuracy", hue="asymmetrical")
+    # sns.catplot(data=lr_data_frame, x="drop_rate", y="Accuracy", hue="skip")
 
     # sns.lineplot(data=lr_data_frame, x="drop_rate", y="Accuracy", hue="backbone", markers=True, style="backbone")
     # sns.scatterplot(data=data_frame, x="min_val_mse", y="Accuracy", hue="backbone")

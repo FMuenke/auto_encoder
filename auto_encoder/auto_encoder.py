@@ -48,6 +48,8 @@ class AutoEncoder:
             cfg.opt["embedding_type"] = "flatten"
         if "embedding_activation" not in cfg.opt:
             cfg.opt["embedding_activation"] = "linear"
+        if "embedding_noise" not in cfg.opt:
+            cfg.opt["embedding_noise"] = 0.0
         if "drop_rate" not in cfg.opt:
             cfg.opt["drop_rate"] = 0.0
         if "skip" not in cfg.opt:
@@ -59,8 +61,7 @@ class AutoEncoder:
         self.drop_rate = cfg.opt["drop_rate"]
         self.asymmetrical = cfg.opt["asymmetrical"]
         self.skip_connection = cfg.opt["skip"]
-
-        print(self.asymmetrical)
+        self.embedding_noise = cfg.opt["embedding_noise"]
 
         self.model = None
 
@@ -104,6 +105,7 @@ class AutoEncoder:
                 depth=self.depth,
                 resolution=self.resolution,
                 drop_rate=self.drop_rate,
+                noise=self.embedding_noise,
                 skip=self.skip_connection,
                 asymmetrical=self.asymmetrical,
             )
@@ -112,7 +114,9 @@ class AutoEncoder:
                 input_shape=self.input_shape,
                 embedding_size=self.embedding_size,
                 embedding_activation=self.embedding_activation,
-                drop_rate=self.drop_rate
+                drop_rate=self.drop_rate,
+                noise=self.embedding_noise,
+                skip=self.skip_connection
             )
         elif self.backbone in ["linear", "lin"]:
             x_input, bottleneck, output = linear_auto_encoder(
@@ -123,6 +127,7 @@ class AutoEncoder:
                 depth=self.depth,
                 resolution=self.resolution,
                 drop_rate=self.drop_rate,
+                noise=self.embedding_noise,
                 skip=self.skip_connection,
                 asymmetrical=self.asymmetrical
             )
@@ -135,7 +140,9 @@ class AutoEncoder:
                 depth=self.depth,
                 resolution=self.resolution,
                 drop_rate=self.drop_rate,
+                noise=self.embedding_noise,
                 asymmetrical=self.asymmetrical,
+                skip=self.skip_connection,
             )
         elif self.backbone in ["vision_transformer", "vit"]:
             x_input, bottleneck, output = vit_auto_encoder(
@@ -146,7 +153,9 @@ class AutoEncoder:
                 depth=self.depth,
                 resolution=self.resolution,
                 drop_rate=self.drop_rate,
-                asymmetrical=self.asymmetrical
+                noise=self.embedding_noise,
+                asymmetrical=self.asymmetrical,
+                skip=self.skip_connection,
             )
         else:
             raise ValueError("{} Backbone was not recognised".format(self.backbone))

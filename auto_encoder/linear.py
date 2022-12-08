@@ -46,8 +46,9 @@ def linear_auto_encoder(
         depth,
         resolution,
         drop_rate,
-        skip=False,
-        asymmetrical=False,
+        noise,
+        skip,
+        asymmetrical,
 ):
     input_sizes = {512: 0, 256: 0, 128: 0, 64: 0, 32: 0, }
     assert input_shape[0] == input_shape[1], "Only Squared Inputs! - {} / {} -".format(input_shape[0], input_shape[1])
@@ -61,32 +62,21 @@ def linear_auto_encoder(
         embedding_size=embedding_size,
         embedding_type=embedding_type,
         activation=embedding_activation,
-        drop_rate=drop_rate
+        drop_rate=drop_rate,
+        noise=noise,
+        skip=skip
     )
 
-    bottleneck = emb.build(x)
+    bottleneck, x = emb.build(x)
 
     reshape_layer_dim = input_shape[0] / (2 ** depth)
     assert reshape_layer_dim in [2 ** x for x in [0, 1, 2, 3, 4, 5, 6]]
 
-    if skip:
-        x_pass = layers.Conv2D(embedding_size, (1, 1))(x)
-        x_pass = relu_bn(x_pass)
-        x_pass = layers.Flatten()(x_pass)
-        x_pass = layers.Dropout(drop_rate)(x_pass)
-        x = layers.Concatenate()([bottleneck, x_pass])
-    else:
-        x = bottleneck
-
     if asymmetrical:
-        x = layers.Dense(int(reshape_layer_dim * reshape_layer_dim * embedding_size), name='dense_1')(x)
-        x = layers.LeakyReLU()(x)
-        x = tf.reshape(x, [-1, int(reshape_layer_dim), int(reshape_layer_dim), embedding_size], name='Reshape_Layer')
+        x = emb.transform_to_feature_maps(x, reshape_layer_dim, reshape_layer_dim, embedding_size)
         x = make_decoder_stack(x, depth, resolution=1)
     else:
-        x = layers.Dense(int(reshape_layer_dim * reshape_layer_dim * n_features), name='dense_1')(x)
-        x = layers.LeakyReLU()(x)
-        x = tf.reshape(x, [-1, int(reshape_layer_dim), int(reshape_layer_dim), n_features], name='Reshape_Layer')
+        x = emb.transform_to_feature_maps(x, reshape_layer_dim, reshape_layer_dim, n_features)
         x = make_decoder_stack(x, depth, resolution)
 
     output = layers.Conv2DTranspose(3, 3, 1, padding='same', activation='linear', name='conv_transpose_5')(x)
@@ -101,6 +91,8 @@ def linear_variational_auto_encoder(
         depth,
         resolution,
         drop_rate,
+        noise,
+        skip,
 ):
     input_sizes = {512: 0, 256: 0, 128: 0, 64: 0, 32: 0, }
     assert input_shape[0] == input_shape[1], "Only Squared Inputs! - {} / {} -".format(input_shape[0], input_shape[1])
@@ -114,10 +106,11 @@ def linear_variational_auto_encoder(
         embedding_size=embedding_size,
         embedding_type=embedding_type,
         activation=embedding_activation,
-        drop_rate=drop_rate
+        drop_rate=drop_rate, noise=noise,
+        skip=skip,
     )
 
-    latent_flat = emb.build(x)
+    latent_flat, _ = emb.build(x)
 
     z_mean = layers.Dense(embedding_size, name="z_mean")(latent_flat)
     z_log_var = layers.Dense(embedding_size, name="z_log_var")(latent_flat)

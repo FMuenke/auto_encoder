@@ -76,8 +76,10 @@ def vit_auto_encoder(
         embedding_activation,
         depth,
         resolution,
-        drop_rate=0.25,
-        asymmetrical=False
+        drop_rate,
+        noise,
+        asymmetrical,
+        skip,
 ):
     num_patches_p_side = 8
     num_patches = num_patches_p_side**2
@@ -110,23 +112,23 @@ def vit_auto_encoder(
         embedding_type=embedding_type,
         embedding_size=embedding_size,
         activation=embedding_activation,
-        drop_rate=drop_rate,
+        drop_rate=drop_rate, noise=noise,
+        skip=skip,
         mode="1d"
     )
-    bottleneck = emb.build(representation)
+    bottleneck, x = emb.build(representation)
 
     if asymmetrical:
-        print("[INFO] Asymmetrical Decoder")
         reshape_layer_dim = input_shape[0] / (2 ** depth)
         assert reshape_layer_dim in [2 ** x for x in [0, 1, 2, 3, 4, 5, 6]]
 
-        x = layers.Dense(int(reshape_layer_dim * reshape_layer_dim * embedding_size))(bottleneck)
+        x = layers.Dense(int(reshape_layer_dim * reshape_layer_dim * embedding_size))(x)
         x = layers.LeakyReLU()(x)
         x = tf.reshape(x, [-1, int(reshape_layer_dim), int(reshape_layer_dim), embedding_size], name='Reshape_Layer')
         x = make_decoder_stack(x, depth, resolution=1)
         output = layers.Conv2DTranspose(3, 3, 1, padding='same', activation='linear', name='conv_transpose_final')(x)
     else:
-        x = layers.Dense(int(num_patches * projection_dim))(bottleneck)
+        x = layers.Dense(int(num_patches * projection_dim))(x)
         x = layers.LeakyReLU()(x)
         x = tf.reshape(x, [-1, int(num_patches), projection_dim], name='Reshape_Layer')
         x = transformer_layers(
