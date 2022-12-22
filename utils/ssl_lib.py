@@ -182,3 +182,4 @@ def eval_semi_supervised_classification(x_train, y_train, x_test, y_test, save_p
     plt.close()
 
     data_frame.to_csv(os.path.join(save_path, "classifier_results.csv"))
+    print(data_frame)

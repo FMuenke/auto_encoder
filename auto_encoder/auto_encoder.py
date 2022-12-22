@@ -12,6 +12,7 @@ from auto_encoder.fully_connected import fully_connected_auto_encoder
 from auto_encoder.linear import linear_auto_encoder
 from auto_encoder.mlp import mlp_auto_encoder
 from auto_encoder.vision_transformer import vit_auto_encoder
+from auto_encoder.still import still_auto_encoder
 from auto_encoder.data_generator import DataGenerator
 
 from auto_encoder.util import check_n_make_dir
@@ -43,22 +44,10 @@ class AutoEncoder:
         self.embedding_size = cfg.opt["embedding_size"]
         self.depth = cfg.opt["depth"]
         self.resolution = cfg.opt["resolution"]
-
-        if "embedding_type" not in cfg.opt:
-            cfg.opt["embedding_type"] = "flatten"
-        if "embedding_activation" not in cfg.opt:
-            cfg.opt["embedding_activation"] = "linear"
-        if "embedding_noise" not in cfg.opt:
-            cfg.opt["embedding_noise"] = 0.0
-        if "drop_rate" not in cfg.opt:
-            cfg.opt["drop_rate"] = 0.0
-        if "skip" not in cfg.opt:
-            cfg.opt["skip"] = False
-        if "asymmetrical" not in cfg.opt:
-            cfg.opt["asymmetrical"] = False
         self.embedding_type = cfg.opt["embedding_type"]
         self.embedding_activation = cfg.opt["embedding_activation"]
         self.drop_rate = cfg.opt["drop_rate"]
+        self.dropout_structure = cfg.opt["dropout_structure"]
         self.asymmetrical = cfg.opt["asymmetrical"]
         self.skip_connection = cfg.opt["skip"]
         self.embedding_noise = cfg.opt["embedding_noise"]
@@ -105,6 +94,7 @@ class AutoEncoder:
                 depth=self.depth,
                 resolution=self.resolution,
                 drop_rate=self.drop_rate,
+                dropout_structure=self.dropout_structure,
                 noise=self.embedding_noise,
                 skip=self.skip_connection,
                 asymmetrical=self.asymmetrical,
@@ -127,6 +117,21 @@ class AutoEncoder:
                 depth=self.depth,
                 resolution=self.resolution,
                 drop_rate=self.drop_rate,
+                dropout_structure=self.dropout_structure,
+                noise=self.embedding_noise,
+                skip=self.skip_connection,
+                asymmetrical=self.asymmetrical
+            )
+        elif self.backbone in ["still"]:
+            x_input, bottleneck, output = still_auto_encoder(
+                input_shape=self.input_shape,
+                embedding_size=self.embedding_size,
+                embedding_type=self.embedding_type,
+                embedding_activation=self.embedding_activation,
+                depth=self.depth,
+                resolution=self.resolution,
+                drop_rate=self.drop_rate,
+                dropout_structure=self.dropout_structure,
                 noise=self.embedding_noise,
                 skip=self.skip_connection,
                 asymmetrical=self.asymmetrical
@@ -140,6 +145,7 @@ class AutoEncoder:
                 depth=self.depth,
                 resolution=self.resolution,
                 drop_rate=self.drop_rate,
+                dropout_structure=self.dropout_structure,
                 noise=self.embedding_noise,
                 asymmetrical=self.asymmetrical,
                 skip=self.skip_connection,
@@ -153,6 +159,7 @@ class AutoEncoder:
                 depth=self.depth,
                 resolution=self.resolution,
                 drop_rate=self.drop_rate,
+                dropout_structure=self.dropout_structure,
                 noise=self.embedding_noise,
                 asymmetrical=self.asymmetrical,
                 skip=self.skip_connection,
@@ -219,7 +226,7 @@ class AutoEncoder:
             save_weights_only=True
         )
 
-        patience = 128
+        patience = 32
         reduce_lr = ReduceLROnPlateau(monitor=self.metric_to_track, verbose=1, patience=int(patience*0.5))
         # reduce_lr = CosineDecayRestarts(initial_learning_rate=self.init_learning_rate, first_decay_steps=1000)
         early_stop = EarlyStopping(monitor=self.metric_to_track, patience=patience, verbose=1)

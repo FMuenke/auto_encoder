@@ -1,18 +1,10 @@
-import numpy as np
-
 import tensorflow as tf
 from tensorflow.keras import layers
 
+from auto_encoder.essentials import mlp, add_dropout_1d
 
-from auto_encoder.embedding import Embedding
+from auto_encoder.embedding import Embedding, transform_to_feature_maps, transform_to_features
 from auto_encoder.linear import make_decoder_stack
-
-
-def mlp(x, hidden_units, dropout_rate):
-    for units in hidden_units:
-        x = layers.Dense(units, activation=tf.nn.gelu)(x)
-        x = layers.Dropout(dropout_rate)(x)
-    return x
 
 
 class Patches(layers.Layer):
@@ -77,12 +69,15 @@ def vit_auto_encoder(
         depth,
         resolution,
         drop_rate,
+        dropout_structure,
         noise,
         asymmetrical,
         skip,
 ):
-    num_patches_p_side = 8
+    num_patches_p_side = 4
     num_patches = num_patches_p_side**2
+    patch_size = input_shape[0] // num_patches_p_side
+
     num_heads = 4
     projection_dim = 16 * resolution
     transformer_units = [projection_dim * 2, projection_dim]
@@ -90,7 +85,6 @@ def vit_auto_encoder(
     input_sizes = {512: 0, 256: 0, 128: 0, 64: 0, 32: 0, }
     assert input_shape[0] == input_shape[1], "Only Squared Inputs! - {} / {} -".format(input_shape[0], input_shape[1])
     assert input_shape[0] in input_sizes, "Input Size is not supported ({})".format(input_shape[0])
-    patch_size = input_shape[0] // num_patches_p_side
 
     input_layer = layers.Input(shape=input_shape)
     # Create patches.
@@ -108,11 +102,14 @@ def vit_auto_encoder(
 
     # Create a [batch_size, projection_dim] tensor.
     representation = layers.LayerNormalization(epsilon=1e-6)(encoded_patches)
+
     emb = Embedding(
         embedding_type=embedding_type,
         embedding_size=embedding_size,
         activation=embedding_activation,
-        drop_rate=drop_rate, noise=noise,
+        drop_rate=drop_rate,
+        dropout_structure=dropout_structure,
+        noise=noise,
         skip=skip,
         mode="1d"
     )
@@ -121,16 +118,11 @@ def vit_auto_encoder(
     if asymmetrical:
         reshape_layer_dim = input_shape[0] / (2 ** depth)
         assert reshape_layer_dim in [2 ** x for x in [0, 1, 2, 3, 4, 5, 6]]
-
-        x = layers.Dense(int(reshape_layer_dim * reshape_layer_dim * embedding_size))(x)
-        x = layers.LeakyReLU()(x)
-        x = tf.reshape(x, [-1, int(reshape_layer_dim), int(reshape_layer_dim), embedding_size], name='Reshape_Layer')
+        x = transform_to_feature_maps(x, reshape_layer_dim, reshape_layer_dim, embedding_size)
         x = make_decoder_stack(x, depth, resolution=1)
         output = layers.Conv2DTranspose(3, 3, 1, padding='same', activation='linear', name='conv_transpose_final')(x)
     else:
-        x = layers.Dense(int(num_patches * projection_dim))(x)
-        x = layers.LeakyReLU()(x)
-        x = tf.reshape(x, [-1, int(num_patches), projection_dim], name='Reshape_Layer')
+        x = transform_to_features(x, num_patches, projection_dim)
         x = transformer_layers(
             x,
             depth,

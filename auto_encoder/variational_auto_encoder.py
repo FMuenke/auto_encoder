@@ -23,20 +23,16 @@ class VariationalAutoEncoder(AutoEncoder):
                 input_shape=self.input_shape,
                 embedding_size=self.embedding_size,
                 embedding_type=self.embedding_type,
-                embedding_activation=self.embedding_activation,
                 depth=self.depth,
                 resolution=self.resolution,
-                drop_rate=self.drop_rate,
             )
         elif self.backbone in ["linear", "lin"]:
             encoder, decoder = linear_variational_auto_encoder(
                 input_shape=self.input_shape,
                 embedding_size=self.embedding_size,
                 embedding_type=self.embedding_type,
-                embedding_activation=self.embedding_activation,
                 depth=self.depth,
                 resolution=self.resolution,
-                drop_rate=self.drop_rate,
             )
         elif self.backbone in ["fully_connected", "fc"]:
             encoder, decoder = variational_fully_connected_auto_encoder(
@@ -50,6 +46,7 @@ class VariationalAutoEncoder(AutoEncoder):
 
     def build(self, compile_model=True, add_decoder=True):
         self.model = self.get_backbone()
+        self.model(np.zeros((1, self.input_shape[0], self.input_shape[1], 3)))
         self.load()
         if compile_model:
             self.model.compile(optimizer=self.optimizer)
@@ -66,9 +63,9 @@ class VariationalAutoEncoder(AutoEncoder):
         data = np.expand_dims(data, axis=0)
         res = self.model.encoder.predict_on_batch(data)
         z_mean = np.array(res[0])
-        z_log_var = np.array(res[1])
-        res = np.concatenate([z_mean, z_log_var], axis=1)
-        return res
+        # z_log_var = np.array(res[1])
+        # res = np.concatenate([z_mean, z_log_var], axis=1)
+        return z_mean
 
     def plot_latent_space(self, figsize=15):
         # display a n*n 2D manifold of digits

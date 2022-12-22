@@ -41,7 +41,7 @@ def fully_connected_auto_encoder(
         skip=skip,
     )
 
-    bottleneck = emb.build(x)
+    bottleneck, _ = emb.build(x)
 
     x = fcn_block(bottleneck, n_spatial / 4, ident="dec_1")
 

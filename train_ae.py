@@ -16,18 +16,8 @@ print("TF VERSION: ", tf.__version__)
 class Config:
     def __init__(self):
         self.opt = {
-            "type": "autoencoder",
-            "task": "reconstruction",  # reconstruction, denoise, completion
-            "task_difficulty": 0.25,
-            "backbone": "residual",
-            "resolution": 16,
-            "depth": 2,
             "optimizer": "adam",
             "batch_size": 128,
-            "embedding_size": 128,
-            "embedding_type": "glob_avg",
-            "embedding_activation": "linear",
-            "drop_rate": 0.0,
             "init_learning_rate": 1e-3,
             "input_shape": [32, 32, 3],
             "tf-version": tf.__version__,
@@ -48,6 +38,7 @@ def main(args_):
     cfg.opt["embedding_type"] = args_.embedding_type
     cfg.opt["embedding_activation"] = args_.embedding_activation
     cfg.opt["drop_rate"] = float(args_.drop_rate)
+    cfg.opt["dropout_structure"] = args_.dropout_structure
     cfg.opt["embedding_noise"] = float(args_.embedding_noise)
 
     cfg.opt["backbone"] = args_.backbone
@@ -108,14 +99,15 @@ def parse_args():
     parser.add_argument("--type", "-ty", default="autoencoder", help="Path to model")
     parser.add_argument("--task", "-t", default="reconstruction", help="Path to model")
     parser.add_argument("--task_difficulty", "-difficulty", default=0.0, help="Training Mode")
-    parser.add_argument("--embedding_size", "-size", default=128, help="Training Mode")
+    parser.add_argument("--embedding_size", "-size", default=256, help="Training Mode")
     parser.add_argument("--embedding_type", "-type", default="glob_avg", help="Training Mode")
-    parser.add_argument("--embedding_activation", "-activation", default="leaky_relu", help="Training Mode")
+    parser.add_argument("--embedding_activation", "-activation", default="linear", help="Training Mode")
     parser.add_argument("--drop_rate", "-drop", default=0.0, help="Dropout during Embedding")
+    parser.add_argument("--dropout_structure", "-drops", default="general", help="Dropout during Embedding")
     parser.add_argument("--embedding_noise", "-noise", default=0.0, help="Gaussian Noise applied to embedding")
     parser.add_argument("--backbone", "-bb", default="residual", help="Auto Encoder Backbone")
-    parser.add_argument("--depth", "-d", default=4, help="Backbone Depth")
-    parser.add_argument("--resolution", "-r", default=4, help="Backbone Resolution")
+    parser.add_argument("--depth", "-d", default=2, help="Backbone Depth")
+    parser.add_argument("--resolution", "-r", default=16, help="Backbone Resolution")
     parser.add_argument("--use_skip", "-s", default=False, type=bool, help="Add a skip connection to the bottleneck")
     parser.add_argument("--use_asymmetrical", "-asym", default=False, type=bool, help="Reduce the decoder size to a minimum")
     return parser.parse_args()

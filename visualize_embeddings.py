@@ -1,0 +1,86 @@
+import cv2
+import os
+import numpy as np
+from tqdm import tqdm
+import matplotlib.pyplot as plt
+import seaborn as sns
+from auto_encoder.data_set import DataSet
+from auto_encoder.auto_encoder import AutoEncoder
+from auto_encoder.variational_auto_encoder import VariationalAutoEncoder
+
+from auto_encoder.util import check_n_make_dir, load_dict, save_dict
+
+import argparse
+
+
+class Config:
+    def __init__(self):
+        self.opt = {}
+
+
+def make_result_picture(img, res):
+    block = np.ones((img.shape[0], 10, 3))
+    complete = np.concatenate([img, block, res], axis=1)
+    return complete
+
+
+def main(args_):
+    mf = args_.model
+    df = args_.dataset_folder
+
+    ds = DataSet(df)
+    ds.load()
+    test_images = ds.get_data()
+
+    cfg = Config()
+    if os.path.isfile(os.path.join(mf, "opt.json")):
+        cfg.opt = load_dict(os.path.join(mf, "opt.json"))
+
+    results_folder = os.path.join(mf, "results")
+    check_n_make_dir(results_folder, True)
+
+    if "type" in cfg.opt:
+        if cfg.opt["type"] == "variational-autoencoder":
+            ae = VariationalAutoEncoder(mf, cfg)
+            ae.build(add_decoder=False)
+        elif cfg.opt["type"] == "autoencoder":
+            ae = AutoEncoder(mf, cfg)
+            ae.build(add_decoder=False)
+        else:
+            raise Exception("UNKNOWN TYPE: {}".format(cfg.opt["type"]))
+    else:
+        ae = AutoEncoder(mf, cfg)
+        ae.build(add_decoder=True)
+
+    err = []
+
+    for i in tqdm(test_images):
+        data = i.load_x()
+        pred = ae.inference(data)
+        if ae.embedding_type == "map":
+            if np.random.randint(10) == 0:
+                sns.heatmap(data=pred[0, :, :, 0])
+                plt.savefig(os.path.join(results_folder, i.name[:-4] + ".png"))
+                plt.close()
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--dataset_folder",
+        "-df",
+        default="./data/train",
+        help="Path to directory with dataset",
+    )
+    parser.add_argument(
+        "--model",
+        "-m",
+        default="./test/",
+        help="Path to model",
+    )
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    args = parse_args()
+    main(args)

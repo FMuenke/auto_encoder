@@ -380,6 +380,7 @@ class EncoderTask:
                  black_hole=0.0,
                  blurring=0.0,
                  noise=0.0,):
+
         self.tasks = [
             {
                 "name": "NEUTRAL",
@@ -458,7 +459,7 @@ def tests():
     cv2.imwrite("./test_image/test_traffic_sign_blur.png", img)
 
     img = cv2.imread("./test_image/test_traffic_sign.png")
-    img, _ = apply_noise(img, img, percentage=0.50)
+    img, _ = apply_noise(img, img, percentage=0.90)
     cv2.imwrite("./test_image/test_traffic_sign_noise.png", img)
 
 

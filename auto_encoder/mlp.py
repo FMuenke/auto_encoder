@@ -3,7 +3,7 @@ from tensorflow import keras
 from tensorflow.keras import layers
 import tensorflow_addons as tfa
 
-from auto_encoder.embedding import Embedding
+from auto_encoder.embedding import Embedding, transform_to_features, transform_to_feature_maps
 from auto_encoder.linear import make_decoder_stack
 
 
@@ -77,6 +77,7 @@ def mlp_auto_encoder(
         depth,
         resolution,
         drop_rate,
+        dropout_structure,
         noise,
         asymmetrical,
         skip,
@@ -113,7 +114,9 @@ def mlp_auto_encoder(
         embedding_type=embedding_type,
         embedding_size=embedding_size,
         activation=embedding_activation,
-        drop_rate=drop_rate, noise=noise,
+        drop_rate=drop_rate,
+        dropout_structure=dropout_structure,
+        noise=noise,
         skip=skip,
         mode="1d"
     )
@@ -122,19 +125,14 @@ def mlp_auto_encoder(
     if asymmetrical:
         reshape_layer_dim = input_shape[0] / (2 ** depth)
         assert reshape_layer_dim in [2 ** x for x in [0, 1, 2, 3, 4, 5, 6]]
-
-        x = layers.Dense(int(reshape_layer_dim * reshape_layer_dim * embedding_size))(x)
-        x = layers.LeakyReLU()(x)
-        x = tf.reshape(x, [-1, int(reshape_layer_dim), int(reshape_layer_dim), embedding_size], name='Reshape_Layer')
+        x = transform_to_feature_maps(x, int(reshape_layer_dim), int(reshape_layer_dim), embedding_size)
         x = make_decoder_stack(x, depth, resolution=1)
         output = layers.Conv2DTranspose(3, 3, 1, padding='same', activation='linear', name='conv_transpose_final')(x)
     else:
         decoder_blocks = keras.Sequential(
             [MLPMixerLayer(num_patches, embedding_dim, model_dropout_rate) for _ in range(depth)]
         )
-        x = layers.Dense(int(num_patches * embedding_dim))(x)
-        x = layers.LeakyReLU()(x)
-        x = tf.reshape(x, [-1, int(num_patches), embedding_dim], name='Reshape_Layer')
+        x = transform_to_features(x, int(num_patches), embedding_dim)
         x = decoder_blocks(x)
         x = layers.Flatten()(x)
         pre_final = layers.Dense(units=input_shape[0] * input_shape[1] * 3, activation="linear")(x)

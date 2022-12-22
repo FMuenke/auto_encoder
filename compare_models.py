@@ -34,6 +34,8 @@ def load_model(model_folder):
             opt["skip"] = True
         if "task_difficulty" not in opt:
             opt["task_difficulty"] = 0.25
+        if "embedding_noise" not in opt:
+            opt["embedding_noise"] = 0.0
         for k in opt:
             if k == "input_shape":
                 df[k] = str(opt[k])
@@ -48,7 +50,7 @@ def load_model(model_folder):
         else:
             df["min_val_mse"] = logs_df["val_mse"].min()
 
-        df["epochs"] = len(logs_df) - 128
+        df["epochs"] = len(logs_df)
 
     return df
 
@@ -90,43 +92,242 @@ def main(args_):
 
     data_frame = pd.concat(data_frame, ignore_index=True)
     data_frame = data_frame.replace({"clf": "TF-MLP (2048, 1024) drp=0.75"}, "MLP")
+    data_frame = data_frame.replace({"type": "variational-autoencoder"}, "vae")
+    data_frame = data_frame.replace({"type": "autoencoder"}, "ae")
     print(data_frame)
     print(data_frame.iloc[data_frame['Accuracy'].idxmax()])
+    plot_dropout_impact(data_frame, mf)
+    plot_architecture_impact(data_frame, mf)
+    plot_embedding_type_impact(data_frame, mf)
+    plot_task_impact(data_frame, mf)
+    plot_asymmetry_impact(data_frame, mf)
+    plot_noise_impact(data_frame, mf)
 
     properties = {
-        "type": ["autoencoder"],
+        "type": ["ae"],
         "clf": ["MLP"],
         "n_labels": 10000,
-        # "depth": [2],
+        "depth": [2],
         # "resolution": [16],
-        "embedding_size": [128],
-        # "drop_rate": 0.0,
+        # "embedding_size": [256],
+        "drop_rate": 0.0,
+        "dropout_structure": "general",
+        "embedding_noise": 0.0,
         "task": "reconstruction",
         "task_difficulty": 0.0,
         "embedding_type": "glob_avg",
-        "embedding_activation": "leaky_relu",
-        # "backbone": ["residual"],
-        "use_skip": True,
-        "asymmetrical": False
+        "embedding_activation": "linear",
+        "backbone": ["residual"],
+        "skip": False,
+        "asymmetrical": False,
     }
-
-    sns.scatterplot(data=data_frame, x="epochs", y="Accuracy", hue="backbone")
-    plt.show()
 
     lr_data_frame = select_properties(data_frame, properties)
     print(lr_data_frame)
     best_performer = lr_data_frame[lr_data_frame['Accuracy'] == lr_data_frame['Accuracy'].max()].to_dict()
     for k in best_performer:
         print(k, best_performer[k])
-    g = sns.FacetGrid(lr_data_frame, col="resolution", row="depth", hue="skip")
-    g.map(sns.lineplot, "drop_rate", "Accuracy")
-    g.add_legend()
+    # g = sns.FacetGrid(lr_data_frame, col="embedding_type", hue="resolution")
+    # g.map(sns.lineplot, "embedding_size", "Accuracy")
+    # g.add_legend()
 
     # sns.catplot(data=lr_data_frame, x="drop_rate", y="Accuracy", hue="skip")
 
-    # sns.lineplot(data=lr_data_frame, x="drop_rate", y="Accuracy", hue="backbone", markers=True, style="backbone")
-    # sns.scatterplot(data=data_frame, x="min_val_mse", y="Accuracy", hue="backbone")
+    # sns.lineplot(data=lr_data_frame, x="resolution", y="Accuracy", hue="embedding_size", markers=True, style="embedding_size")
+    sns.lineplot(data=lr_data_frame, x="min_val_mse", y="Accuracy", hue="resolution")
     plt.show()
+
+
+def plot_task_impact(data_frame, result_path):
+    properties = {
+        "type": ["ae"],
+        "clf": ["MLP"],
+        "n_labels": 10000,
+        "depth": [2],
+        "resolution": [16],
+        "embedding_size": [256],
+        "drop_rate": 0.0,
+        "dropout_structure": "general",
+        "embedding_noise": 0.0,
+        # "task": "reconstruction",
+        # "task_difficulty": 0.0,
+        "embedding_type": "glob_avg",
+        "embedding_activation": "linear",
+        "backbone": ["residual"],
+        "skip": False,
+        "asymmetrical": False,
+    }
+    lr_data_frame = select_properties(data_frame, properties)
+    sns.lineplot(
+        data=lr_data_frame,
+        x="task_difficulty",
+        y="Accuracy",
+        hue="task", markers=True, style="task"
+    )
+    plt.savefig(os.path.join(result_path, "task_impact.png"))
+    plt.close()
+
+
+def plot_embedding_type_impact(data_frame, result_path):
+    properties = {
+        "type": ["ae"],
+        "clf": ["MLP"],
+        "n_labels": 10000,
+        "depth": [2],
+        "resolution": [16],
+        "embedding_size": [256],
+        "drop_rate": 0.0,
+        "dropout_structure": "general",
+        "embedding_noise": 0.0,
+        "task": "reconstruction",
+        "task_difficulty": 0.0,
+        # "embedding_type": "glob_avg",
+        # "embedding_activation": "linear",
+        "backbone": ["residual"],
+        "skip": False,
+        "asymmetrical": False,
+    }
+    lr_data_frame = select_properties(data_frame, properties)
+    sns.catplot(
+        data=lr_data_frame,
+        x="embedding_type",
+        y="Accuracy",
+        hue="embedding_activation",
+    )
+    plt.savefig(os.path.join(result_path, "embedding_type_impact.png"))
+    plt.close()
+
+
+def plot_asymmetry_impact(data_frame, result_path):
+    properties = {
+        "type": ["ae"],
+        "clf": ["MLP"],
+        "n_labels": 10000,
+        "depth": [2],
+        # "resolution": [16],
+        # "embedding_size": [256],
+        "drop_rate": 0.0,
+        "dropout_structure": "general",
+        "embedding_noise": 0.0,
+        "task": "reconstruction",
+        "task_difficulty": 0.0,
+        "embedding_type": "glob_avg",
+        "embedding_activation": "linear",
+        "backbone": ["residual", "linear"],
+        "skip": False,
+        # "asymmetrical": False,
+    }
+    lr_data_frame = select_properties(data_frame, properties)
+    g = sns.FacetGrid(lr_data_frame, col="asymmetrical", row="backbone", hue="embedding_size")
+    g.map(sns.lineplot, "resolution", "Accuracy")
+    g.add_legend()
+    plt.savefig(os.path.join(result_path, "asymmetry_impact.png"))
+    plt.close()
+
+
+def plot_noise_impact(data_frame, result_path):
+    properties = {
+        "type": ["ae"],
+        "clf": ["MLP"],
+        "n_labels": 10000,
+        "depth": [2],
+        "resolution": [16],
+        "embedding_size": [256],
+        "drop_rate": 0.0,
+        "dropout_structure": "general",
+        # "embedding_noise": 0.0,
+        "task": "reconstruction",
+        "task_difficulty": 0.0,
+        "embedding_type": "glob_avg",
+        "embedding_activation": "linear",
+        "backbone": ["residual"],
+        "skip": False,
+        "asymmetrical": False,
+    }
+    lr_data_frame = select_properties(data_frame, properties)
+    sns.lineplot(
+        data=lr_data_frame,
+        x="embedding_noise",
+        y="Accuracy",
+    )
+    plt.savefig(os.path.join(result_path, "embedding_noise_impact.png"))
+    plt.close()
+
+
+def plot_architecture_impact(data_frame, result_path):
+    properties = {
+        "clf": ["MLP"],
+        "n_labels": 10000,
+        "depth": [2],
+        "drop_rate": 0.0,
+        "dropout_structure": "general",
+        "embedding_noise": 0.0,
+        "task": "reconstruction",
+        "task_difficulty": 0.0,
+        "embedding_type": "glob_avg",
+        "embedding_activation": "linear",
+        "backbone": ["linear", "residual"],
+        "skip": False,
+        "asymmetrical": False,
+    }
+    lr_data_frame = select_properties(data_frame, properties)
+    g = sns.FacetGrid(lr_data_frame, col="backbone", row="type", hue="embedding_size")
+    g.map(sns.lineplot, "resolution", "Accuracy")
+    g.add_legend()
+    plt.savefig(os.path.join(result_path, "architecture_impact.png"))
+    plt.close()
+
+
+def plot_dropout_impact(data_frame, result_path):
+    properties = {
+        "type": ["ae"],
+        "clf": ["MLP"],
+        "n_labels": 10000,
+        "depth": [2],
+        "resolution": [16],
+        "embedding_size": [256],
+        "embedding_noise": 0.0,
+        "task": "reconstruction",
+        "task_difficulty": 0.0,
+        "embedding_type": "glob_avg",
+        "embedding_activation": "linear",
+        "backbone": ["residual"],
+        "asymmetrical": False,
+    }
+    lr_data_frame = select_properties(data_frame, properties)
+    sns.lineplot(
+        data=lr_data_frame[lr_data_frame["skip"] == False],
+        x="drop_rate",
+        y="Accuracy",
+        hue="dropout_structure",
+        markers=True,
+        style="dropout_structure"
+    )
+    plt.savefig(os.path.join(result_path, "dropout_impact_no_skip.png"))
+    plt.close()
+
+    lr_data_frame = select_properties(data_frame, properties)
+    sns.lineplot(
+        data=lr_data_frame,
+        x="drop_rate",
+        y="Accuracy",
+        hue="dropout_structure",
+        markers=True,
+        style="skip"
+    )
+    plt.savefig(os.path.join(result_path, "dropout_impact.png"))
+    plt.close()
+
+    sns.lineplot(
+        data=lr_data_frame[lr_data_frame["skip"] == True],
+        x="drop_rate",
+        y="Accuracy",
+        hue="dropout_structure",
+        markers=True,
+        style="dropout_structure"
+    )
+    plt.savefig(os.path.join(result_path, "dropout_impact_skipp.png"))
+    plt.close()
 
 
 def parse_args():
