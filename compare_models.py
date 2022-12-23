@@ -47,10 +47,13 @@ def load_model(model_folder):
         logs_df = pd.read_csv(os.path.join(model_folder, "logs.csv"))
         if "val_mse" not in logs_df:
             df["min_val_mse"] = logs_df["val_reconstruction_loss"].min()
+            df["val_mse"] = logs_df["val_reconstruction_loss"].iloc[-1]
         else:
             df["min_val_mse"] = logs_df["val_mse"].min()
+            df["val_mse"] = logs_df["val_mse"].iloc[-1]
 
         df["epochs"] = len(logs_df)
+        df["folder"] = os.path.basename(os.path.dirname(model_folder))
 
     return df
 
@@ -102,6 +105,7 @@ def main(args_):
     plot_task_impact(data_frame, mf)
     plot_asymmetry_impact(data_frame, mf)
     plot_noise_impact(data_frame, mf)
+    plot_val_mse_impact(data_frame, mf)
 
     properties = {
         "type": ["ae"],
@@ -134,8 +138,37 @@ def main(args_):
     # sns.catplot(data=lr_data_frame, x="drop_rate", y="Accuracy", hue="skip")
 
     # sns.lineplot(data=lr_data_frame, x="resolution", y="Accuracy", hue="embedding_size", markers=True, style="embedding_size")
-    sns.lineplot(data=lr_data_frame, x="min_val_mse", y="Accuracy", hue="resolution")
-    plt.show()
+    # sns.lineplot(data=lr_data_frame, x="min_val_mse", y="Accuracy", hue="resolution")
+    # plt.show()
+
+
+def plot_val_mse_impact(data_frame, result_path):
+    properties = {
+        "folder": "AE.0",
+        "type": ["ae"],
+        "clf": ["MLP"],
+        "n_labels": 10000,
+        "depth": [2],
+        "resolution": [16],
+        "embedding_size": [256],
+        "drop_rate": 0.0,
+        "dropout_structure": "general",
+        "embedding_noise": 0.0,
+        "task": "reconstruction",
+        "task_difficulty": 0.0,
+        "embedding_type": "glob_avg",
+        "embedding_activation": "linear",
+        "backbone": ["residual"],
+        "skip": False,
+        "asymmetrical": False,
+    }
+    lr_data_frame = select_properties(data_frame, properties)
+    fig, ax = plt.subplots(2, figsize=(10, 12))
+    sns.barplot(ax=ax[0], data=lr_data_frame, x="epochs", y="val_mse")
+    sns.barplot(ax=ax[1], data=lr_data_frame, x="epochs", y="Accuracy")
+    plt.tight_layout()
+    plt.savefig(os.path.join(result_path, "val_mse.png"))
+    plt.close()
 
 
 def plot_task_impact(data_frame, result_path):

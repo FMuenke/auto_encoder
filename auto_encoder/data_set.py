@@ -65,6 +65,21 @@ def load_folder(path_to_folder):
     return images
 
 
+def sample_images_by_class(images, n_samples, class_mapping):
+    images_to_sample = {cls: n_samples for cls in class_mapping}
+    sampled_images = []
+    remaining_images = []
+    for i in images:
+        cls = i.load_y()
+        if images_to_sample[cls] > 0:
+            sampled_images.append(i)
+            images_to_sample[cls] -= 1
+        else:
+            remaining_images.append(i)
+
+    return sampled_images, remaining_images
+
+
 class DataSet:
     def __init__(self, path_to_data):
         self.path = path_to_data
