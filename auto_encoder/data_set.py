@@ -66,6 +66,7 @@ def load_folder(path_to_folder):
 
 
 def sample_images_by_class(images, n_samples, class_mapping):
+    n_samples = int(n_samples / len(class_mapping))
     images_to_sample = {cls: n_samples for cls in class_mapping}
     sampled_images = []
     remaining_images = []
@@ -76,7 +77,6 @@ def sample_images_by_class(images, n_samples, class_mapping):
             images_to_sample[cls] -= 1
         else:
             remaining_images.append(i)
-
     return sampled_images, remaining_images
 
 

@@ -14,6 +14,20 @@ def entropy_minimum(n_classes):
     return entropy_minimum_func
 
 
+def combined_loss(n_classes):
+    def combined_loss_func(y_true, y_pred):
+        y_cls_true = y_true[:n_classes]
+        y_cls_pred = y_pred[:n_classes]
+
+        y_rec_true = y_true[n_classes:]
+        y_rec_pred = y_pred[n_classes:]
+
+        cls_loss = categorical_crossentropy(y_cls_true, y_cls_pred, from_logits=True)
+        rec_loss = mean_squared_error(y_rec_true, y_rec_pred)
+        return cls_loss + rec_loss
+    return combined_loss_func
+
+
 def mean_sq_err():
     def mean_sq_err_func(y_true, y_pred):
         value = mean_squared_error(y_true, y_pred)

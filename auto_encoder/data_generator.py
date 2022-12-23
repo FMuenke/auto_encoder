@@ -120,19 +120,25 @@ class ClassificationDataGenerator(keras.utils.Sequence):
         Generates data containing the batch_size samples.
         """
         x = []
-        y = []
+        y1 = []
+        y2 = []
         for i, tag in enumerate(tags_temp):
             img = tag.load_x()
             tar = img
             cls = tag.load_y()
 
             if self.augmentations is not None:
-                img, _ = self.augmentations.apply(img, tar)
+                img, tar = self.augmentations.apply(img, tar)
 
             img = prepare_input(img, self.image_size)
+            tar = prepare_input(tar, self.image_size)
             x.append(img)
-            y.append(self.class_mapping[cls])
+            cls_vec = np.zeros(len(self.class_mapping))
+            cls_vec[self.class_mapping[cls]] = 1
+            y1.append(cls_vec)
+            y2.append(tar)
 
         x = np.array(x, dtype=np.float32)
-        y = np.array(y, dtype=np.float32)
-        return x, y
+        y1 = np.array(y1, dtype=np.float32)
+        y2 = np.array(y2, dtype=np.float32)
+        return x, [y1, y2]

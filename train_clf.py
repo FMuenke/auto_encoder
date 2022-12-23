@@ -53,14 +53,10 @@ def main(args_):
     ds.load()
     if cfg.opt["n_labels"] > 0:
         images = ds.get_data()
-        train_images, remaining_images = sample_images_by_class(
-            images, int(cfg.opt["n_labels"] * 0.8), class_mapping
-        )
-        test_image, _ = sample_images_by_class(
-            remaining_images, int(cfg.opt["n_labels"] * 0.2), class_mapping
-        )
+        train_images, remaining_images = sample_images_by_class(images, int(cfg.opt["n_labels"] * 0.8), class_mapping)
+        test_images, _ = sample_images_by_class(remaining_images, int(cfg.opt["n_labels"] * 0.2), class_mapping)
     else:
-        train_images, test_image = ds.get_data(0.8)
+        train_images, test_images = ds.get_data(0.8)
 
     if cfg.opt["task"] == "reconstruction":
         task = None
@@ -83,7 +79,7 @@ def main(args_):
 
     check_n_make_dir(mf)
     save_dict(cfg.opt, os.path.join(mf, "opt.json"))
-    clf.fit(train_images, test_image, task)
+    clf.fit(train_images, test_images, task)
 
 
 def parse_args():

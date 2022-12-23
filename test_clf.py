@@ -59,16 +59,14 @@ def main(args_):
     with open(os.path.join(mf, "clf-report.txt"), "w") as f:
         f.write(classification_report(y_true, y_pred))
 
-    results_df = pd.DataFrame({
+    results_df = pd.DataFrame([{
         "clf": "cnn",
-        "F1-Score": f1_score(y_true, y_pred),
+        "F1-Score": f1_score(y_true, y_pred, average="weighted"),
         "Accuracy": accuracy_score(y_true, y_pred),
         "run": 0,
         "n_labels": cfg.opt["n_labels"]
-    })
-
-
-
+    }])
+    results_df.to_csv(os.path.join(mf, "classifier_results.csv"))
 
 
 def parse_args():

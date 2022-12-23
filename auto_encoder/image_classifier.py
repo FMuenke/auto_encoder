@@ -151,18 +151,22 @@ class ImageClassifier:
         return x_input, bottleneck, output
 
     def build(self, compile_model=True):
-        x_input, bottleneck, _ = self.get_backbone()
-        y = layers.Dense(len(self.class_mapping), activation="softmax")(bottleneck)
+        x_input, bottleneck, output = self.get_backbone()
+        y = layers.Dense(len(self.class_mapping))(bottleneck)
 
-        self.model = Model(inputs=x_input, outputs=y)
+        self.model = Model(inputs=x_input, outputs=[y, output])
         self.load()
         if compile_model:
             self.model.compile(
                 optimizer=self.optimizer,
-                loss=keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+                loss=[
+                    keras.losses.CategoricalCrossentropy(from_logits=True),
+                    keras.losses.MeanSquaredError(),
+                ],
                 metrics=[
-                    keras.metrics.SparseCategoricalAccuracy(name="accuracy"),
-                    keras.metrics.SparseTopKCategoricalAccuracy(5, name="top-5-accuracy"),
+                    keras.metrics.CategoricalAccuracy(name="accuracy"),
+                    # keras.metrics.TopKCategoricalAccuracy(5, name="top-5-accuracy"),
+                    keras.metrics.MeanSquaredError(),
                 ],
             )
 
@@ -188,7 +192,7 @@ class ImageClassifier:
 
         check_n_make_dir(self.model_folder)
 
-        print("[INFO]: Training with {} / Testing with {}".format(len(tag_set_train), len(tag_set_test)))
+        print("[INFO] Training with {} / Testing with {}".format(len(tag_set_train), len(tag_set_test)))
 
         self.batch_size = np.min([len(tag_set_train), len(tag_set_test), self.batch_size])
 
@@ -211,7 +215,7 @@ class ImageClassifier:
             monitor=self.metric_to_track,
             verbose=1,
             save_best_only=True,
-            mode="max",
+            mode="min",
             save_weights_only=True
         )
 
