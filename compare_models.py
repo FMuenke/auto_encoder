@@ -45,12 +45,14 @@ def load_model(model_folder):
         df["structure"] = "{}-{}".format(str(df["type"][0]), str(df["backbone"][0]))
 
         logs_df = pd.read_csv(os.path.join(model_folder, "logs.csv"))
-        if "val_mse" not in logs_df:
+        if "val_reconstruction_loss" in logs_df:
             df["min_val_mse"] = logs_df["val_reconstruction_loss"].min()
             df["val_mse"] = logs_df["val_reconstruction_loss"].iloc[-1]
-        else:
+        elif "val_mse" in logs_df:
             df["min_val_mse"] = logs_df["val_mse"].min()
             df["val_mse"] = logs_df["val_mse"].iloc[-1]
+        else:
+            return None
 
         df["epochs"] = len(logs_df)
         df["folder"] = os.path.basename(os.path.dirname(model_folder))
@@ -308,6 +310,26 @@ def plot_architecture_impact(data_frame, result_path):
     g.map(sns.lineplot, "resolution", "Accuracy")
     g.add_legend()
     plt.savefig(os.path.join(result_path, "architecture_impact.png"))
+    plt.close()
+
+    properties = {
+        "clf": ["MLP"],
+        "n_labels": 10000,
+        "depth": [2, 4],
+        "drop_rate": 0.0,
+        "dropout_structure": "general",
+        "embedding_noise": 0.0,
+        "task": "reconstruction",
+        "task_difficulty": 0.0,
+        "embedding_type": "glob_avg",
+        "embedding_activation": "linear",
+        "backbone": ["linear", "residual"],
+        "skip": False,
+        "asymmetrical": False,
+    }
+    lr_data_frame = select_properties(data_frame, properties)
+    sns.lineplot(data=lr_data_frame, x="resolution", y="Accuracy", hue="depth")
+    plt.savefig(os.path.join(result_path, "architecture_impact_depth.png"))
     plt.close()
 
 
