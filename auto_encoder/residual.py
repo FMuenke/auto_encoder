@@ -17,13 +17,13 @@ def make_clf_resnet_encoder_block(x, filters, ident, downsample=True):
         strides=1,
         filters=f1,
         padding="same", name="clf_r-down.1-{}".format(ident))(x)
-    y = relu_bn(y, "1.{}".format(ident))
+    y = relu_bn(y, "clf_1.{}".format(ident))
     y = layers.SeparableConv2D(
         kernel_size=3,
         strides=(1 if not downsample else 2),
         filters=f2,
         padding="same", name="clf_r-down.2-{}".format(ident))(y)
-    y = relu_bn(y, "2.{}".format(ident))
+    y = relu_bn(y, "clf_2.{}".format(ident))
     y = layers.SeparableConv2D(
         kernel_size=1,
         strides=1,
@@ -39,7 +39,7 @@ def make_clf_resnet_encoder_block(x, filters, ident, downsample=True):
             padding="same", name="clf_r-down.pass-{}".format(ident))(x)
 
     out = layers.Add()([x, y])
-    out = relu_bn(out, "3.{}".format(ident))
+    out = relu_bn(out, "clf_3.{}".format(ident))
     return out
 
 
@@ -109,7 +109,7 @@ def make_resnet_decoder_block(x, filters, ident, upsample=True):
     return out
 
 
-def make_encoder_stack(input_layer, depth, resolution):
+def make_encoder_stack(input_layer, depth, resolution, scale=0):
     x = input_layer
     for i in range(depth):
         filters = [
@@ -118,10 +118,13 @@ def make_encoder_stack(input_layer, depth, resolution):
             16 * 2**i * resolution
         ]
         x = make_resnet_encoder_block(x, filters, ident=i + 1)
+        if scale > 0:
+            for scale in range(scale):
+                x = make_resnet_encoder_block(x, filters, ident="{}-ident-{}".format(i + 1, scale), downsample=False)
     return x
 
 
-def make_decoder_stack(feature_map_after_bottleneck, depth, resolution):
+def make_decoder_stack(feature_map_after_bottleneck, depth, resolution, scale=0):
     x = feature_map_after_bottleneck
     for i in range(depth):
         filters = [
@@ -130,7 +133,31 @@ def make_decoder_stack(feature_map_after_bottleneck, depth, resolution):
             8 * 2**(depth - i - 1) * resolution,
         ]
         x = make_resnet_decoder_block(x, filters, ident=i + 1)
+        if scale > 0:
+            for scale in range(scale):
+                x = make_resnet_decoder_block(x, filters, ident="{}-ident-{}".format(i + 1, scale), upsample=True)
     return x
+
+
+def residual_classifier_wo_embedding(
+        input_shape,
+        depth,
+        resolution,
+        scale,
+        drop_rate,
+        dropout_structure,
+        noise,
+        n_classes,
+):
+    input_sizes = {512: 0, 256: 0, 128: 0, 64: 0, 32: 0, }
+    assert input_shape[0] == input_shape[1], "Only Squared Inputs! - {} / {} -".format(input_shape[0], input_shape[1])
+    assert input_shape[0] in input_sizes, "Input Size is not supported ({})".format(input_shape[0])
+    input_layer = layers.Input(batch_shape=(None, input_shape[0], input_shape[1], input_shape[2]))
+
+    x = make_encoder_stack(input_layer, depth, resolution, scale)
+    x = layers.GlobalAvgPool2D()(x)
+    output = add_classification_head(x, n_classes=n_classes, hidden_units=[], dropout_rate=0.75)
+    return input_layer, output
 
 
 def residual_classifier(

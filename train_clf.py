@@ -41,7 +41,8 @@ def main(args_):
     cfg = Config()
     cfg.opt["n_labels"] = int(args_.n_labels)
     cfg.opt["init_learning_rate"] = float(args_.learning_rate)
-    cfg.opt["type"] = args_.type
+    cfg.opt["freeze"] = args_.freeze_backbone
+
     cfg.opt["augmentation"] = args_.augmentation
     cfg.opt["augmentation_intensity"] = float(args_.augmentation_intensity)
     cfg.opt["embedding_size"] = int(args_.embedding_size)
@@ -54,6 +55,7 @@ def main(args_):
     cfg.opt["backbone"] = args_.backbone
     cfg.opt["resolution"] = int(args_.resolution)
     cfg.opt["depth"] = int(args_.depth)
+    cfg.opt["scale"] = int(args_.scale)
 
     class_mapping = load_dict(os.path.join(df, "class_mapping.json"))
 
@@ -66,7 +68,8 @@ def main(args_):
         train_images, remaining_images = sample_images_by_class(images, int(cfg.opt["n_labels"] * 0.8), class_mapping)
         test_images, _ = sample_images_by_class(remaining_images, int(cfg.opt["n_labels"] * 0.2), class_mapping)
     else:
-        train_images, test_images = ds.get_data(0.8)
+        images = ds.get_data()
+        train_images, test_images = sample_images_by_class(images, int(len(images) * 0.8), class_mapping)
 
     if cfg.opt["augmentation"] == "None":
         aug = None
@@ -97,8 +100,8 @@ def parse_args():
         help="Path to directory with dataset",
     )
     parser.add_argument("--model", "-m", help="Path to model")
-    parser.add_argument("--type", "-ty", default="autoencoder", help="Path to model")
     parser.add_argument("--weights", "-w", default="None", help="Path to pretrained weights")
+    parser.add_argument("--freeze_backbone", "-freeze", type=bool, default=False, help="Path to pretrained weights")
     parser.add_argument("--augmentation", "-aug", default="None", help="Path to model")
     parser.add_argument("--augmentation_intensity", "-intensity", default=0.0, help="Training Mode")
     parser.add_argument("--embedding_size", "-size", default=256, help="Training Mode")
@@ -110,8 +113,9 @@ def parse_args():
     parser.add_argument("--backbone", "-bb", default="residual", help="Auto Encoder Backbone")
     parser.add_argument("--depth", "-d", default=2, help="Backbone Depth")
     parser.add_argument("--resolution", "-r", default=16, help="Backbone Resolution")
+    parser.add_argument("--scale", "-s", default=0, help="Backbone Scale")
     parser.add_argument("--n_labels", "-n", default=0, help="Number of Samples to train with")
-    parser.add_argument("--learning_rate", "-lr", default=0.0001, help="Initial Learning Rate")
+    parser.add_argument("--learning_rate", "-lr", default=0.001, help="Initial Learning Rate")
     return parser.parse_args()
 
 

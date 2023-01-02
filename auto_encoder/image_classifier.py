@@ -9,7 +9,7 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping, CSVLogger
 
 
-from auto_encoder.residual import residual_classifier
+from auto_encoder.residual import residual_classifier, residual_classifier_wo_embedding
 from auto_encoder.linear import linear_auto_encoder
 from auto_encoder.vision_transformer import vit_auto_encoder
 from auto_encoder.data_generator import ClassificationDataGenerator
@@ -39,6 +39,8 @@ class ImageClassifier:
         self.drop_rate = cfg.opt["drop_rate"]
         self.dropout_structure = cfg.opt["dropout_structure"]
         self.embedding_noise = cfg.opt["embedding_noise"]
+        self.freeze = cfg.opt["freeze"]
+        self.scale = cfg.opt["scale"]
 
         self.model = None
 
@@ -78,6 +80,17 @@ class ImageClassifier:
                 noise=self.embedding_noise,
                 n_classes=len(self.class_mapping),
             )
+        elif self.backbone in ["d-residual"]:
+            x_in, output = residual_classifier_wo_embedding(
+                input_shape=self.input_shape,
+                depth=self.depth,
+                resolution=self.resolution,
+                scale=self.scale,
+                drop_rate=self.drop_rate,
+                dropout_structure=self.dropout_structure,
+                noise=self.embedding_noise,
+                n_classes=len(self.class_mapping),
+            )
         else:
             raise ValueError("{} Backbone was not recognised".format(self.backbone))
 
@@ -87,10 +100,11 @@ class ImageClassifier:
         x_in, output = self.get_backbone()
 
         self.model = keras.Model(x_in, output)
-        for layer in self.model.layers:
-            if str(layer.name).startswith("clf_"):
-                continue
-            layer.trainable = False
+        if self.freeze:
+            for layer in self.model.layers:
+                if str(layer.name).startswith("clf_"):
+                    continue
+                layer.trainable = False
         print(self.model.summary())
         self.load()
         if compile_model:
