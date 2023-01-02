@@ -61,12 +61,14 @@ def main(args_):
 
     results_df = pd.DataFrame([{
         "clf": "cnn",
-        "F1-Score": f1_score(y_true, y_pred, average="weighted"),
+        "F1-Score": f1_score(y_true, y_pred, average="weighted", zero_division=0),
         "Accuracy": accuracy_score(y_true, y_pred),
         "run": 0,
         "n_labels": cfg.opt["n_labels"]
     }])
     results_df.to_csv(os.path.join(mf, "classifier_results.csv"))
+
+    print(results_df)
 
 
 def parse_args():

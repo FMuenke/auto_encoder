@@ -7,7 +7,40 @@ from auto_encoder.sampling_layer import Sampling
 
 from auto_encoder.linear import make_decoder_stack as make_linear_decoder_stack
 
-from auto_encoder.essentials import relu_bn
+from auto_encoder.essentials import relu_bn, add_classification_head
+
+
+def make_clf_resnet_encoder_block(x, filters, ident, downsample=True):
+    f1, f2, f3 = filters
+    y = layers.SeparableConv2D(
+        kernel_size=1,
+        strides=1,
+        filters=f1,
+        padding="same", name="clf_r-down.1-{}".format(ident))(x)
+    y = relu_bn(y, "1.{}".format(ident))
+    y = layers.SeparableConv2D(
+        kernel_size=3,
+        strides=(1 if not downsample else 2),
+        filters=f2,
+        padding="same", name="clf_r-down.2-{}".format(ident))(y)
+    y = relu_bn(y, "2.{}".format(ident))
+    y = layers.SeparableConv2D(
+        kernel_size=1,
+        strides=1,
+        filters=f3,
+        padding="same", name="clf_r-down.3-{}".format(ident))(y)
+
+    if downsample:
+        x = layers.AvgPool2D(pool_size=(2, 2), strides=2)(x)
+        x = layers.SeparableConv2D(
+            kernel_size=1,
+            strides=1,
+            filters=f3,
+            padding="same", name="clf_r-down.pass-{}".format(ident))(x)
+
+    out = layers.Add()([x, y])
+    out = relu_bn(out, "3.{}".format(ident))
+    return out
 
 
 def make_resnet_encoder_block(x, filters, ident, downsample=True):
@@ -98,6 +131,50 @@ def make_decoder_stack(feature_map_after_bottleneck, depth, resolution):
         ]
         x = make_resnet_decoder_block(x, filters, ident=i + 1)
     return x
+
+
+def residual_classifier(
+        input_shape,
+        embedding_size,
+        embedding_type,
+        embedding_activation,
+        depth,
+        resolution,
+        drop_rate,
+        dropout_structure,
+        noise,
+        n_classes,
+):
+    input_sizes = {512: 0, 256: 0, 128: 0, 64: 0, 32: 0, }
+    assert input_shape[0] == input_shape[1], "Only Squared Inputs! - {} / {} -".format(input_shape[0], input_shape[1])
+    assert input_shape[0] in input_sizes, "Input Size is not supported ({})".format(input_shape[0])
+    input_layer = layers.Input(batch_shape=(None, input_shape[0], input_shape[1], input_shape[2]))
+
+    x = make_encoder_stack(input_layer, depth, resolution)
+
+    emb = Embedding(
+        embedding_size=embedding_size,
+        embedding_type=embedding_type,
+        activation=embedding_activation,
+        drop_rate=drop_rate,
+        dropout_structure=dropout_structure,
+        noise=noise,
+        skip=False,
+    )
+    x_1, _ = emb.build(x)
+
+    filters = [
+        8 * 2 ** depth * resolution,
+        8 * 2 ** depth * resolution,
+        16 * 2 ** depth * resolution
+    ]
+    x_2 = make_clf_resnet_encoder_block(x, filters, ident="final")
+    x_2 = layers.GlobalAvgPool2D()(x_2)
+
+    x = layers.Concatenate()([x_1, x_2])
+
+    output = add_classification_head(x, n_classes=n_classes, hidden_units=[512], dropout_rate=0.75)
+    return input_layer, output
 
 
 def residual_auto_encoder(

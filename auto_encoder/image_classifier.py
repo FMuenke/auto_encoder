@@ -9,13 +9,12 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping, CSVLogger
 
 
-from auto_encoder.residual import residual_auto_encoder
-from auto_encoder.fully_connected import fully_connected_auto_encoder
+from auto_encoder.residual import residual_classifier
 from auto_encoder.linear import linear_auto_encoder
-from auto_encoder.mlp import mlp_auto_encoder
 from auto_encoder.vision_transformer import vit_auto_encoder
-from auto_encoder.still import still_auto_encoder
 from auto_encoder.data_generator import ClassificationDataGenerator
+
+from utils.ssl_lib import TfMlp
 
 from auto_encoder.util import check_n_make_dir
 from auto_encoder.util import prepare_input
@@ -67,7 +66,7 @@ class ImageClassifier:
 
     def get_backbone(self):
         if self.backbone in ["resnet", "residual"]:
-            x_input, bottleneck, output = residual_auto_encoder(
+            x_in, output = residual_classifier(
                 input_shape=self.input_shape,
                 embedding_size=self.embedding_size,
                 embedding_type=self.embedding_type,
@@ -77,96 +76,32 @@ class ImageClassifier:
                 drop_rate=self.drop_rate,
                 dropout_structure=self.dropout_structure,
                 noise=self.embedding_noise,
-                skip=False,
-                asymmetrical=False,
-            )
-        elif self.backbone in ["fully_connected", "fc"]:
-            x_input, bottleneck, output = fully_connected_auto_encoder(
-                input_shape=self.input_shape,
-                embedding_size=self.embedding_size,
-                embedding_activation=self.embedding_activation,
-                drop_rate=self.drop_rate,
-                noise=self.embedding_noise,
-                skip=False
-            )
-        elif self.backbone in ["linear", "lin"]:
-            x_input, bottleneck, output = linear_auto_encoder(
-                input_shape=self.input_shape,
-                embedding_size=self.embedding_size,
-                embedding_type=self.embedding_type,
-                embedding_activation=self.embedding_activation,
-                depth=self.depth,
-                resolution=self.resolution,
-                drop_rate=self.drop_rate,
-                dropout_structure=self.dropout_structure,
-                noise=self.embedding_noise,
-                skip=False,
-                asymmetrical=False
-            )
-        elif self.backbone in ["still"]:
-            x_input, bottleneck, output = still_auto_encoder(
-                input_shape=self.input_shape,
-                embedding_size=self.embedding_size,
-                embedding_type=self.embedding_type,
-                embedding_activation=self.embedding_activation,
-                depth=self.depth,
-                resolution=self.resolution,
-                drop_rate=self.drop_rate,
-                dropout_structure=self.dropout_structure,
-                noise=self.embedding_noise,
-                skip=False,
-                asymmetrical=False
-            )
-        elif self.backbone in ["mlp"]:
-            x_input, bottleneck, output = mlp_auto_encoder(
-                input_shape=self.input_shape,
-                embedding_size=self.embedding_size,
-                embedding_type=self.embedding_type,
-                embedding_activation=self.embedding_activation,
-                depth=self.depth,
-                resolution=self.resolution,
-                drop_rate=self.drop_rate,
-                dropout_structure=self.dropout_structure,
-                noise=self.embedding_noise,
-                asymmetrical=False,
-                skip=False,
-            )
-        elif self.backbone in ["vision_transformer", "vit"]:
-            x_input, bottleneck, output = vit_auto_encoder(
-                input_shape=self.input_shape,
-                embedding_size=self.embedding_size,
-                embedding_type=self.embedding_type,
-                embedding_activation=self.embedding_activation,
-                depth=self.depth,
-                resolution=self.resolution,
-                drop_rate=self.drop_rate,
-                dropout_structure=self.dropout_structure,
-                noise=self.embedding_noise,
-                asymmetrical=False,
-                skip=False,
+                n_classes=len(self.class_mapping),
             )
         else:
             raise ValueError("{} Backbone was not recognised".format(self.backbone))
 
-        return x_input, bottleneck, output
+        return x_in, output
 
     def build(self, compile_model=True):
-        x_input, bottleneck, output = self.get_backbone()
-        y = layers.Dense(len(self.class_mapping))(bottleneck)
+        x_in, output = self.get_backbone()
 
-        self.model = Model(inputs=x_input, outputs=[y, output])
+        self.model = keras.Model(x_in, output)
+        for layer in self.model.layers:
+            if str(layer.name).startswith("clf_"):
+                continue
+            layer.trainable = False
+        print(self.model.summary())
         self.load()
         if compile_model:
             self.model.compile(
                 optimizer=self.optimizer,
                 loss=[
                     keras.losses.CategoricalCrossentropy(from_logits=True),
-                    keras.losses.MeanSquaredError(),
                 ],
                 metrics=[
                     keras.metrics.CategoricalAccuracy(name="accuracy"),
-                    # keras.metrics.TopKCategoricalAccuracy(5, name="top-5-accuracy"),
-                    keras.metrics.MeanSquaredError(),
+                    keras.metrics.TopKCategoricalAccuracy(5, name="top-5-accuracy"),
                 ],
             )
 

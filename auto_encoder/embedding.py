@@ -95,18 +95,9 @@ class Embedding:
         elif self.embedding_type == "glob_max":
             latent = self.add_pooling_op(x, "max")
             bottleneck = create_dense_encoder(latent, self.embedding_size)
-        elif self.embedding_type == "flatten+glob_avg":
-            latent = layers.Conv2D(self.embedding_size, (1, 1), strides=1, padding="same")(x)
-            latent = relu_bn(latent)
-            bottleneck = self.add_pooling_op(latent, "avg")
-            x_pass = layers.Flatten()(latent)
-            x_pass = layers.Dense(self.embedding_size)(x_pass)
-        elif self.embedding_type == "flatten+glob_max":
-            latent = layers.Conv2D(self.embedding_size, (1, 1), strides=1, padding="same")(x)
-            latent = relu_bn(latent)
-            bottleneck = self.add_pooling_op(latent, "max")
-            x_pass = layers.Flatten()(latent)
-            x_pass = layers.Dense(self.embedding_size)(x_pass)
+        elif self.embedding_type == "direct_avg":
+            self.activation = "XX"
+            bottleneck = self.add_pooling_op(x, "avg")
         else:
             raise Exception("Unknown Embedding Type - {} -".format(self.embedding_type))
 

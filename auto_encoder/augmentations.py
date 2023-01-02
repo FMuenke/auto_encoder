@@ -105,8 +105,8 @@ def apply_noise(img, tar, percentage):
 
 def apply_blur(img, lab, percentage):
     height, width, ch = img.shape
-    k_w = int(percentage * width / 2)
-    k_h = int(percentage * height / 2)
+    k_w = np.max([int(percentage * width / 2), 2])
+    k_h = np.max([int(percentage * height / 2), 2])
     img = cv2.blur(img.astype(np.float32), ksize=(k_w, k_h))
     return img.astype(np.uint8), lab
 
@@ -116,7 +116,7 @@ def apply_channel_shift(img):
     return noise.apply(img)
 
 
-def apply_horizontal_flip(img, lab):
+def apply_horizontal_flip(img, lab, percentage):
     img = cv2.flip(img, 1)
     lab = cv2.flip(lab, 1)
     if len(lab.shape) == 2:
@@ -124,7 +124,7 @@ def apply_horizontal_flip(img, lab):
     return img, lab
 
 
-def apply_vertical_flip(img, lab):
+def apply_vertical_flip(img, lab, percentage):
     img = cv2.flip(img, 0)
     lab = cv2.flip(lab, 0)
     if len(lab.shape) == 2:
@@ -132,7 +132,7 @@ def apply_vertical_flip(img, lab):
     return img, lab
 
 
-def apply_crop(img, lab):
+def apply_crop(img, lab, percentage):
     height, width, ch = img.shape
     prz_zoom = 0.10
     w_random = int(width * prz_zoom)
@@ -156,7 +156,7 @@ def apply_crop(img, lab):
     return img, lab
 
 
-def apply_rotation_90(img, lab):
+def apply_rotation_90(img, lab, percentage):
     angle = np.random.choice([0, 90, 180, 270])
 
     if angle == 270:
@@ -184,7 +184,7 @@ def apply_rotation_90(img, lab):
     return img, lab
 
 
-def apply_tiny_rotation(img, lab):
+def apply_tiny_rotation(img, lab, percentage):
     img = img.astype(np.float)
     lab = lab.astype(np.float)
     rand_angle = np.random.randint(20) - 10
@@ -345,25 +345,43 @@ def apply_patch_shuffling(img, lab, n_patches=8, percentage=0.25):
 
 
 class Augmentations:
-    def __init__(self, flips=True, crop=True, rotation=True):
-        self.flips = flips
-        self.rotation = rotation
-        self.crop = crop
+    def __init__(self,
+                 neutral=1.0,
+                 masking=0.0,
+                 cross_cut=0.0,
+                 patch_rotation=0.0,
+                 patch_shuffling=0.0,
+                 black_hole=0.0,
+                 blurring=0.0,
+                 noise=0.0,
+                 flip_rotate90=1.0,
+                 crop=1.0):
+
+        self.tasks = [
+            {"name": "NEUTRAL", "function": dummy_function, "percentage": neutral},
+            {"name": "MASKING", "function": apply_mask, "percentage": masking},
+            {"name": "CROSS_REMOVAL", "function": apply_cross_cut, "percentage": cross_cut},
+            {"name": "PATCH_ROTATION", "function": apply_patch_rotation, "percentage": patch_rotation},
+            {"name": "PATCH_SHUFFLING", "function": apply_patch_shuffling, "percentage": patch_shuffling},
+            {"name": "BLACKHOLE_MASKING", "function": apply_blackhole_mask, "percentage": black_hole},
+            {"name": "BLURRING", "function": apply_blur, "percentage": blurring},
+            {"name": "NOISE", "function": apply_noise, "percentage": noise},
+            {"name": "ROTATION", "function": apply_rotation_90, "percentage": flip_rotate90},
+            {"name": "VERTICAL_FLIP", "function": apply_vertical_flip, "percentage": flip_rotate90},
+            {"name": "HORIZONTAL_FLIP", "function": apply_horizontal_flip, "percentage": flip_rotate90},
+            {"name": "CROP", "function": apply_crop, "percentage": crop},
+        ]
+
+        self.active_tasks = [t for t in self.tasks if t["percentage"] > 0.0]
 
     def apply(self, img, tar):
-        if 0 == np.random.randint(6) and self.flips:
-            img, tar = apply_horizontal_flip(img, tar)
-
-        if 0 == np.random.randint(6) and self.flips:
-            img, tar = apply_vertical_flip(img, tar)
-
-        if 0 == np.random.randint(6) and self.crop:
-            img, tar = apply_crop(img, tar)
-
-        if 0 == np.random.randint(6) and self.rotation:
-            img, tar = apply_rotation_90(img, tar)
-
-        return img, tar
+        if len(self.active_tasks) == 0:
+            return img, tar
+        task_to_apply = np.random.choice(self.active_tasks)
+        percentage = np.random.randint(100 * task_to_apply["percentage"]) / 100
+        if percentage == 0:
+            return img, tar
+        return task_to_apply["function"](img, tar, percentage=percentage)
 
 
 def dummy_function(img, tar, percentage):
@@ -379,49 +397,21 @@ class EncoderTask:
                  patch_shuffling=0.0,
                  black_hole=0.0,
                  blurring=0.0,
-                 noise=0.0,):
+                 noise=0.0,
+                 flip_rotate90=0.0):
 
         self.tasks = [
-            {
-                "name": "NEUTRAL",
-                "function": dummy_function,
-                "percentage": neutral,
-            },
-            {
-                "name": "MASKING",
-                "function": apply_mask,
-                "percentage": masking
-            },
-            {
-                "name": "CROSS_REMOVAL",
-                "function": apply_cross_cut,
-                "percentage": cross_cut,
-            },
-            {
-                "name": "PATCH_ROTATION",
-                "function": apply_patch_rotation,
-                "percentage": patch_rotation,
-            },
-            {
-                "name": "PATCH_SHUFFLING",
-                "function": apply_patch_shuffling,
-                "percentage": patch_shuffling,
-            },
-            {
-                "name": "BLACKHOLE_MASKING",
-                "function": apply_blackhole_mask,
-                "percentage": black_hole,
-            },
-            {
-                "name": "BLURRING",
-                "function": apply_blur,
-                "percentage": blurring
-            },
-            {
-                "name": "NOISE",
-                "function": apply_noise,
-                "percentage": noise
-            }
+            {"name": "NEUTRAL", "function": dummy_function, "percentage": neutral},
+            {"name": "MASKING", "function": apply_mask, "percentage": masking},
+            {"name": "CROSS_REMOVAL", "function": apply_cross_cut, "percentage": cross_cut},
+            {"name": "PATCH_ROTATION", "function": apply_patch_rotation, "percentage": patch_rotation},
+            {"name": "PATCH_SHUFFLING", "function": apply_patch_shuffling, "percentage": patch_shuffling},
+            {"name": "BLACKHOLE_MASKING", "function": apply_blackhole_mask, "percentage": black_hole},
+            {"name": "BLURRING", "function": apply_blur, "percentage": blurring},
+            {"name": "NOISE", "function": apply_noise, "percentage": noise},
+            {"name": "ROTATION", "function": apply_rotation_90, "percentage": flip_rotate90},
+            {"name": "VERTICAL_FLIP", "function": apply_vertical_flip, "percentage": flip_rotate90},
+            {"name": "HORIZONTAL_FLIP", "function": apply_horizontal_flip, "percentage": flip_rotate90},
         ]
 
         self.active_tasks = [t for t in self.tasks if t["percentage"] > 0.0]

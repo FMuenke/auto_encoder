@@ -36,10 +36,17 @@ def load_data_set(model, path_to_data, class_mapping):
     return data_x, data_y
 
 
-def get_data_sets(ds_path_train, ds_path_test, model_path, class_mapping):
+def get_data_sets(ds_path_train, ds_path_test, model_path, class_mapping, direct_features):
     cfg = Config()
     if os.path.isfile(os.path.join(model_path, "opt.json")):
         cfg.opt = load_dict(os.path.join(model_path, "opt.json"))
+
+    if direct_features:
+        ds_ident = "_DIRECT"
+        cfg.opt["embedding_type"] = "direct_avg"
+    else:
+        ds_ident = ""
+
     if "type" in cfg.opt:
         if cfg.opt["type"] == "variational-autoencoder":
             ae = VariationalAutoEncoder(model_path, cfg)
@@ -54,49 +61,42 @@ def get_data_sets(ds_path_train, ds_path_test, model_path, class_mapping):
         ae.build(add_decoder=False)
 
     x_train, y_train = load_data_set(ae, ds_path_train, class_mapping)
-    np.save(os.path.join(model_path, "x_train.npy"), x_train)
-    np.save(os.path.join(model_path, "y_train.npy"), y_train)
+    np.save(os.path.join(model_path, "x_train{}.npy".format(ds_ident)), x_train)
+    np.save(os.path.join(model_path, "y_train{}.npy".format(ds_ident)), y_train)
 
     x_test, y_test = load_data_set(ae, ds_path_test, class_mapping)
-    np.save(os.path.join(model_path, "x_test.npy"), x_test)
-    np.save(os.path.join(model_path, "y_test.npy"), y_test)
+    np.save(os.path.join(model_path, "x_test{}.npy".format(ds_ident)), x_test)
+    np.save(os.path.join(model_path, "y_test{}.npy".format(ds_ident)), y_test)
 
 
 def main(args_):
     df = args_.dataset_folder
     model_path = args_.model
+    direct_features = bool(args_.direct_features)
 
+    if direct_features:
+        ds_ident = "_DIRECT"
+    else:
+        ds_ident = ""
     class_mapping = load_dict(os.path.join(df, "class_mapping.json"))
 
-    if not os.path.isfile(os.path.join(model_path, "y_test.npy")):
-        get_data_sets(os.path.join(df, "train"), os.path.join(df, "test"), model_path, class_mapping)
+    if not os.path.isfile(os.path.join(model_path, "y_test{}.npy".format(ds_ident))):
+        get_data_sets(os.path.join(df, "train"), os.path.join(df, "test"), model_path, class_mapping, direct_features)
 
-    x_train = np.load(os.path.join(model_path, "x_train.npy"))
-    y_train = np.load(os.path.join(model_path, "y_train.npy"))
+    x_train = np.load(os.path.join(model_path, "x_train{}.npy".format(ds_ident)))
+    y_train = np.load(os.path.join(model_path, "y_train{}.npy".format(ds_ident)))
 
-    x_test = np.load(os.path.join(model_path, "x_test.npy"))
-    y_test = np.load(os.path.join(model_path, "y_test.npy"))
+    x_test = np.load(os.path.join(model_path, "x_test{}.npy".format(ds_ident)))
+    y_test = np.load(os.path.join(model_path, "y_test{}.npy".format(ds_ident)))
 
-    eval_semi_supervised_classification(x_train, y_train, x_test, y_test, model_path)
+    eval_semi_supervised_classification(x_train, y_train, x_test, y_test, model_path, direct_features=direct_features)
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--dataset_folder",
-        "-df",
-        help="Path to directory with dataset",
-    )
-    parser.add_argument(
-        "--model",
-        "-m",
-        help="Path to model",
-    )
-    parser.add_argument(
-        "--testset_folder",
-        "-tf",
-        help="Path to directory with dataset",
-    )
+    parser.add_argument("--dataset_folder", "-df", help="Path to directory with dataset")
+    parser.add_argument("--model", "-m", help="Path to model")
+    parser.add_argument("--direct_features", "-direct", default=False, help="Use features directly from feature-map")
     return parser.parse_args()
 
 

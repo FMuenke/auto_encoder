@@ -156,7 +156,7 @@ def cls_test_run(x_train, y_train, x_test, y_test, n_labels, run_id):
     return data_frame
 
 
-def eval_semi_supervised_classification(x_train, y_train, x_test, y_test, save_path, dim_reduction=False):
+def eval_semi_supervised_classification(x_train, y_train, x_test, y_test, save_path, direct_features, dim_reduction=False):
     data_frame = []
 
     if dim_reduction:
@@ -173,13 +173,18 @@ def eval_semi_supervised_classification(x_train, y_train, x_test, y_test, save_p
             data_frame.append(data_frame_p)
     data_frame = pd.concat(data_frame, ignore_index=True)
 
+    if direct_features:
+        ds_ident = "_DIRECT"
+    else:
+        ds_ident = ""
+
     sns.lineplot(data=data_frame, x="n_labels", y="Accuracy", hue="clf")
-    plt.savefig(os.path.join(save_path, "clf_accuracy.png"))
+    plt.savefig(os.path.join(save_path, "clf_accuracy{}.png".format(ds_ident)))
     plt.close()
 
     sns.lineplot(data=data_frame, x="n_labels", y="F1-Score", hue="clf")
-    plt.savefig(os.path.join(save_path, "clf_f1_score.png"))
+    plt.savefig(os.path.join(save_path, "clf_f1_score{}.png".format(ds_ident)))
     plt.close()
 
-    data_frame.to_csv(os.path.join(save_path, "classifier_results.csv"))
+    data_frame.to_csv(os.path.join(save_path, "classifier_results{}.csv".format(ds_ident)))
     print(data_frame)
