@@ -44,6 +44,7 @@ def main(args_):
     cfg.opt["backbone"] = args_.backbone
     cfg.opt["resolution"] = int(args_.resolution)
     cfg.opt["depth"] = int(args_.depth)
+    cfg.opt["scale"] = int(args_.scale)
     cfg.opt["skip"] = args_.use_skip
     cfg.opt["asymmetrical"] = args_.use_asymmetrical
 
@@ -77,8 +78,12 @@ def main(args_):
         task = EncoderTask(patch_shuffling=cfg.opt["task_difficulty"])
     elif cfg.opt["task"] == "reconstruction_rotated":
         task = EncoderTask(patch_rotation=cfg.opt["task_difficulty"])
-    elif cfg.opt["task"] == "completion_blackhole":
-        task = EncoderTask(black_hole=cfg.opt["task_difficulty"])
+    elif cfg.opt["task"] == "warp":
+        task = EncoderTask(warp=cfg.opt["task_difficulty"])
+    elif cfg.opt["task"] == "imagine_mask":
+        task = EncoderTask(imagine_mask=cfg.opt["task_difficulty"])
+    elif cfg.opt["task"] == "imagine_patches":
+        task = EncoderTask(imagine_patches=cfg.opt["task_difficulty"])
     else:
         raise Exception("No Valid Task Specified.. {}".format(cfg.opt["task"]))
 
@@ -107,8 +112,9 @@ def parse_args():
     parser.add_argument("--embedding_noise", "-noise", default=0.0, help="Gaussian Noise applied to embedding")
     parser.add_argument("--backbone", "-bb", default="residual", help="Auto Encoder Backbone")
     parser.add_argument("--depth", "-d", default=2, help="Backbone Depth")
+    parser.add_argument("--scale", "-s", default=0, help="Backbone Scale")
     parser.add_argument("--resolution", "-r", default=16, help="Backbone Resolution")
-    parser.add_argument("--use_skip", "-s", default=False, type=bool, help="Add a skip connection to the bottleneck")
+    parser.add_argument("--use_skip", "-skip", default=False, type=bool, help="Add a skip connection to the bottleneck")
     parser.add_argument("--use_asymmetrical", "-asym", default=False, type=bool, help="Reduce the decoder size to a minimum")
     return parser.parse_args()
 

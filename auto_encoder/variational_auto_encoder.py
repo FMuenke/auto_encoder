@@ -12,8 +12,8 @@ from auto_encoder.util import prepare_input
 
 
 class VariationalAutoEncoder(AutoEncoder):
-    def __init__(self, model_folder, opt):
-        super(VariationalAutoEncoder, self).__init__(model_folder, opt)
+    def __init__(self, model_folder, cfg):
+        super(VariationalAutoEncoder, self).__init__(model_folder, cfg)
 
         self.metric_to_track = "val_loss"
 
@@ -24,6 +24,7 @@ class VariationalAutoEncoder(AutoEncoder):
                 embedding_size=self.embedding_size,
                 embedding_type=self.embedding_type,
                 depth=self.depth,
+                scale=self.scale,
                 resolution=self.resolution,
             )
         elif self.backbone in ["linear", "lin"]:

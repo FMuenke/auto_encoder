@@ -3,7 +3,6 @@ import shutil
 import tensorflow as tf
 from auto_encoder.data_set import DataSet, sample_images_by_class
 from auto_encoder.image_classifier import ImageClassifier
-from auto_encoder.hybrid_image_classifier import HybridImageClassifier
 
 from auto_encoder.augmentations import Augmentations
 
@@ -31,7 +30,9 @@ def main(args_):
     df = args_.dataset_folder
     ds = DataSet(os.path.join(df, "train"))
 
-    pretrained_weights_path = args_.weights
+    assert args_.auto_encoder is not None, "No AutoEncoder to Finetune found."
+
+    pretrained_weights_path = os.path.join(args_.auto_encoder, "weights-final.hdf5")
     if os.path.isfile(pretrained_weights_path):
         check_n_make_dir(mf)
         shutil.copy(
@@ -39,34 +40,33 @@ def main(args_):
             os.path.join(mf, "ae-weights-final.hdf5")
         )
 
+    ae_config_path = os.path.join(args_.auto_encoder, "opt.json")
+    if os.path.isfile(ae_config_path):
+        check_n_make_dir(mf)
+        shutil.copy(
+            ae_config_path,
+            os.path.join(mf, "ae-opt.json")
+        )
+
     cfg = Config()
+    cfg.opt = load_dict(os.path.join(mf, "ae-opt.json"))
+
+    if args_.backbone is not None:
+        cfg.opt["backbone"] = args_.backbone
+
     cfg.opt["n_labels"] = int(args_.n_labels)
     cfg.opt["init_learning_rate"] = float(args_.learning_rate)
     cfg.opt["freeze"] = args_.freeze_backbone
 
     cfg.opt["augmentation"] = args_.augmentation
     cfg.opt["augmentation_intensity"] = float(args_.augmentation_intensity)
-    cfg.opt["embedding_size"] = int(args_.embedding_size)
-    cfg.opt["embedding_type"] = args_.embedding_type
-    cfg.opt["embedding_activation"] = args_.embedding_activation
     cfg.opt["drop_rate"] = float(args_.drop_rate)
     cfg.opt["dropout_structure"] = args_.dropout_structure
     cfg.opt["embedding_noise"] = float(args_.embedding_noise)
 
-    cfg.opt["type"] = args_.type
-    cfg.opt["backbone"] = args_.backbone
-    cfg.opt["resolution"] = int(args_.resolution)
-    cfg.opt["depth"] = int(args_.depth)
-    cfg.opt["scale"] = int(args_.scale)
-    cfg.opt["asymmetrical"] = bool(args_.asymmetrical)
-    cfg.opt["skip"] = bool(args_.skip)
-
     class_mapping = load_dict(os.path.join(df, "class_mapping.json"))
 
-    if cfg.opt["type"] == "hybrid":
-        clf = HybridImageClassifier(mf, cfg, class_mapping)
-    else:
-        clf = ImageClassifier(mf, cfg, class_mapping)
+    clf = ImageClassifier(mf, cfg, class_mapping)
     clf.build(True)
 
     ds.load()
@@ -107,23 +107,14 @@ def parse_args():
         help="Path to directory with dataset",
     )
     parser.add_argument("--model", "-m", help="Path to model")
-    parser.add_argument("--type", "-ty", default="", help="Model Type [cnn / hybrid]")
-    parser.add_argument("--asymmetrical", "-asym", default=False, type=bool)
-    parser.add_argument("--skip", "-sk", default=False, type=bool)
-    parser.add_argument("--weights", "-w", default="None", help="Path to pretrained weights")
+    parser.add_argument("--auto_encoder", "-ae", help="Path to pretrained weights")
+    parser.add_argument("--backbone", "-bb", help="Overwrite Backbone!")
     parser.add_argument("--freeze_backbone", "-freeze", type=bool, default=False, help="Path to pretrained weights")
     parser.add_argument("--augmentation", "-aug", default="None", help="Path to model")
     parser.add_argument("--augmentation_intensity", "-intensity", default=0.0, help="Training Mode")
-    parser.add_argument("--embedding_size", "-size", default=256, help="Training Mode")
-    parser.add_argument("--embedding_type", "-type", default="glob_avg", help="Training Mode")
-    parser.add_argument("--embedding_activation", "-activation", default="linear", help="Training Mode")
     parser.add_argument("--drop_rate", "-drop", default=0.0, help="Dropout during Embedding")
     parser.add_argument("--dropout_structure", "-drops", default="general", help="Dropout during Embedding")
     parser.add_argument("--embedding_noise", "-noise", default=0.0, help="Gaussian Noise applied to embedding")
-    parser.add_argument("--backbone", "-bb", default="residual", help="Auto Encoder Backbone")
-    parser.add_argument("--depth", "-d", default=2, help="Backbone Depth")
-    parser.add_argument("--resolution", "-r", default=16, help="Backbone Resolution")
-    parser.add_argument("--scale", "-s", default=0, help="Backbone Scale")
     parser.add_argument("--n_labels", "-n", default=0, help="Number of Samples to train with")
     parser.add_argument("--learning_rate", "-lr", default=0.001, help="Initial Learning Rate")
     return parser.parse_args()

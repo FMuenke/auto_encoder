@@ -1,6 +1,12 @@
 import os
 import argparse
 import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
+
+from sklearn.decomposition import PCA
+
 from auto_encoder.data_set import DataSet
 from auto_encoder.auto_encoder import AutoEncoder
 from auto_encoder.variational_auto_encoder import VariationalAutoEncoder
@@ -69,6 +75,34 @@ def get_data_sets(ds_path_train, ds_path_test, model_path, class_mapping, direct
     np.save(os.path.join(model_path, "y_test{}.npy".format(ds_ident)), y_test)
 
 
+def vis_embeddings(x_train, y_train, x_test, y_test, path):
+    n_components = 2
+    print("Reducing to {} Components".format(n_components))
+    decomp = PCA(n_components=n_components)
+    x_train_dec = decomp.fit_transform(x_train)
+    x_test_dec = decomp.transform(x_test)
+    df_trn = pd.DataFrame({"x1": x_train_dec[:, 0], "x2": x_train_dec[:, 1], "class": y_train})
+    df_tst = pd.DataFrame({"x1": x_test_dec[:, 0], "x2": x_test_dec[:, 1], "class": y_test})
+
+    fig, ax = plt.subplots(1, 2, figsize=(10, 5))
+    sns.scatterplot(ax=ax[0], data=df_trn, x="x1", y="x2", hue="class", style="class", legend=False)
+    sns.scatterplot(ax=ax[1], data=df_tst, x="x1", y="x2", hue="class", style="class", legend=False)
+    ax[0].set_title("Train")
+    ax[1].set_title("Test")
+    plt.savefig(os.path.join(path, "feature_space.png"))
+    plt.close()
+
+    df_trn = df_trn.groupby("class").mean()
+    df_tst = df_tst.groupby("class").mean()
+    fig, ax = plt.subplots(1, 2, figsize=(10, 5))
+    sns.scatterplot(ax=ax[0], data=df_trn, x="x1", y="x2", hue="class", style="class", legend=False)
+    sns.scatterplot(ax=ax[1], data=df_tst, x="x1", y="x2", hue="class", style="class", legend=False)
+    ax[0].set_title("Train")
+    ax[1].set_title("Test")
+    plt.savefig(os.path.join(path, "feature_space_class.png"))
+    plt.close()
+
+
 def main(args_):
     df = args_.dataset_folder
     model_path = args_.model
@@ -88,6 +122,8 @@ def main(args_):
 
     x_test = np.load(os.path.join(model_path, "x_test{}.npy".format(ds_ident)))
     y_test = np.load(os.path.join(model_path, "y_test{}.npy".format(ds_ident)))
+
+    vis_embeddings(x_train, y_train, x_test, y_test, model_path)
 
     eval_semi_supervised_classification(x_train, y_train, x_test, y_test, model_path, direct_features=direct_features)
 

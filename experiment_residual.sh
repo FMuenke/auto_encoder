@@ -1,32 +1,37 @@
 #!/bin/sh
 
-model="../AE.3/"
+model="../AE.1/"
 data="../cifar-100"
 
 
 for ETYPE in glob_avg
 do
-  for R in 8 16 32
+  for D in 2 4
   do
-    for EMB in 128 256 512
+    for R in 8 16 32
     do
-      current_model_folder="$model/AE-R4-$R-EMB$EMB-$ETYPE"
-      if [ -d $current_model_folder ]
-      then
-        echo "Directory $current_model_folder"
-      else
-        python train_ae.py -df $data/train --model $current_model_folder -bb residual -d 4 --resolution $R -type $ETYPE -size $EMB
-        python semi_supervised_classification.py -df $data --model $current_model_folder
-      fi
+      for EMB in 128 256 512
+      do
+        current_model_folder="$model/AE-R$D-$R-EMB$EMB-$ETYPE"
+        if [ -d $current_model_folder ]
+        then
+          echo "Directory $current_model_folder"
+        else
+          echo "GO"
+          # python train_ae.py -df $data/train --model $current_model_folder -bb residual -d $D --resolution $R -type $ETYPE -size $EMB
+          # python semi_supervised_classification.py -df $data --model $current_model_folder
+        fi
 
-      current_model_folder="$model/AE-AR4-$R-EMB$EMB-$ETYPE"
-      if [ -d $current_model_folder ]
-      then
-        echo "Directory $current_model_folder"
-      else
-        python train_ae.py -df $data/train --model $current_model_folder -bb residual -d 4  --resolution $R -type $ETYPE -size $EMB -asym True
-        python semi_supervised_classification.py -df $data --model $current_model_folder
-      fi
+        current_model_folder="$model/AE-AR$D-$R-EMB$EMB-$ETYPE"
+        if [ -d $current_model_folder ]
+        then
+          echo "Directory $current_model_folder"
+        else
+          echo "GO"
+          python train_ae.py -df $data/train --model $current_model_folder -bb residual -d $D  --resolution $R -type $ETYPE -size $EMB -asym True
+          python semi_supervised_classification.py -df $data --model $current_model_folder
+        fi
+      done
     done
   done
 done

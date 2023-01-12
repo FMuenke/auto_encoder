@@ -58,3 +58,155 @@ def mlp(x, hidden_units, dropout_rate):
         x = layers.Dense(units, activation=tf.nn.gelu)(x)
         x = layers.Dropout(dropout_rate)(x)
     return x
+
+
+def make_clf_residual_encoder_block(x, filters, ident, downsample=True):
+    f1, f2, f3 = filters
+    y = layers.SeparableConv2D(
+        kernel_size=1,
+        strides=1,
+        filters=f1,
+        padding="same", name="clf_r-down.1-{}".format(ident))(x)
+    y = relu_bn(y, "clf_1.{}".format(ident))
+    y = layers.SeparableConv2D(
+        kernel_size=3,
+        strides=(1 if not downsample else 2),
+        filters=f2,
+        padding="same", name="clf_r-down.2-{}".format(ident))(y)
+    y = relu_bn(y, "clf_2.{}".format(ident))
+    y = layers.SeparableConv2D(
+        kernel_size=1,
+        strides=1,
+        filters=f3,
+        padding="same", name="clf_r-down.3-{}".format(ident))(y)
+
+    if downsample:
+        x = layers.AvgPool2D(pool_size=(2, 2), strides=2)(x)
+        x = layers.SeparableConv2D(
+            kernel_size=1,
+            strides=1,
+            filters=f3,
+            padding="same", name="clf_r-down.pass-{}".format(ident))(x)
+
+    out = layers.Add()([x, y])
+    out = relu_bn(out, "clf_3.{}".format(ident))
+    return out
+
+
+def make_residual_encoder_block(x, filters, ident, downsample=True):
+    f1, f2, f3 = filters
+    y = layers.SeparableConv2D(
+        kernel_size=1,
+        strides=1,
+        filters=f1,
+        padding="same", name="r-down.1-{}".format(ident))(x)
+    y = relu_bn(y)
+    y = layers.SeparableConv2D(
+        kernel_size=3,
+        strides=(1 if not downsample else 2),
+        filters=f2,
+        padding="same", name="r-down.2-{}".format(ident))(y)
+    y = relu_bn(y)
+    y = layers.SeparableConv2D(
+        kernel_size=1,
+        strides=1,
+        filters=f3,
+        padding="same", name="r-down.3-{}".format(ident))(y)
+
+    if downsample:
+        x = layers.AvgPool2D(pool_size=(2, 2), strides=2)(x)
+        x = layers.SeparableConv2D(
+            kernel_size=1,
+            strides=1,
+            filters=f3,
+            padding="same", name="r-down.pass-{}".format(ident))(x)
+
+    out = layers.Add()([x, y])
+    out = relu_bn(out)
+    return out
+
+
+def make_small_residual_encoder_block(x, filters, ident, downsample=True):
+    f1, f2 = filters
+    y = layers.Convolution2D(
+        kernel_size=3,
+        strides=(1 if not downsample else 2),
+        filters=f1,
+        padding="same", name="r-down.2-{}".format(ident))(x)
+    y = relu_bn(y)
+    y = layers.Convolution2D(
+        kernel_size=3,
+        strides=1,
+        filters=f2,
+        padding="same", name="r-down.3-{}".format(ident))(y)
+
+    if downsample:
+        x = layers.Convolution2D(
+            kernel_size=1,
+            strides=2,
+            filters=f2,
+            padding="same", name="r-down.pass-{}".format(ident))(x)
+
+    out = layers.Add()([x, y])
+    out = relu_bn(out)
+    return out
+
+
+def make_residual_decoder_block(x, filters, ident, upsample=True):
+    f1, f2, f3 = filters
+    y = layers.Conv2DTranspose(
+        kernel_size=1,
+        strides=1,
+        filters=f1,
+        padding="same", name="r-up.1-{}".format(ident))(x)
+    y = relu_bn(y)
+    y = layers.Conv2DTranspose(
+        kernel_size=3,
+        strides=(1 if not upsample else 2),
+        filters=f2,
+        padding="same", name="r-up.2-{}".format(ident))(y)
+    y = relu_bn(y)
+    y = layers.Conv2DTranspose(
+        kernel_size=1,
+        strides=1,
+        filters=f3,
+        padding="same", name="r-up.3-{}".format(ident))(y)
+
+    if upsample:
+        x = layers.UpSampling2D(size=(2, 2))(x)
+        x = layers.Conv2DTranspose(
+            kernel_size=1,
+            strides=1,
+            filters=f3,
+            padding="same", name="r-up.pass-{}".format(ident))(x)
+
+    out = layers.Add()([x, y])
+    out = relu_bn(out)
+    return out
+
+
+def make_small_residual_decoder_block(x, filters, ident, upsample=True):
+    f1, f2 = filters
+    y = layers.Conv2DTranspose(
+        kernel_size=3,
+        strides=(1 if not upsample else 2),
+        filters=f1,
+        padding="same", name="r-up.2-{}".format(ident))(x)
+    y = relu_bn(y)
+    y = layers.Convolution2D(
+        kernel_size=1,
+        strides=1,
+        filters=f2,
+        padding="same", name="r-up.3-{}".format(ident))(y)
+
+    if upsample:
+        x = layers.UpSampling2D(size=(2, 2))(x)
+        x = layers.Convolution2D(
+            kernel_size=1,
+            strides=1,
+            filters=f2,
+            padding="same", name="r-up.pass-{}".format(ident))(x)
+
+    out = layers.Add()([x, y])
+    out = relu_bn(out)
+    return out

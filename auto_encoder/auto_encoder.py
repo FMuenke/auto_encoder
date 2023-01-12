@@ -8,11 +8,12 @@ from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, Early
 
 
 from auto_encoder.residual import residual_auto_encoder
-from auto_encoder.fully_connected import fully_connected_auto_encoder
+from auto_encoder.conv_next import convnext_auto_encoder
 from auto_encoder.linear import linear_auto_encoder
 from auto_encoder.mlp import mlp_auto_encoder
 from auto_encoder.vision_transformer import vit_auto_encoder
 from auto_encoder.still import still_auto_encoder
+from auto_encoder.small_residual import small_residual_auto_encoder
 from auto_encoder.data_generator import DataGenerator
 
 from auto_encoder.util import check_n_make_dir
@@ -43,6 +44,10 @@ class AutoEncoder:
         self.backbone = cfg.opt["backbone"]
         self.embedding_size = cfg.opt["embedding_size"]
         self.depth = cfg.opt["depth"]
+        if "scale" not in cfg.opt:
+            self.scale = 0
+        else:
+            self.scale = cfg.opt["scale"]
         self.resolution = cfg.opt["resolution"]
         self.embedding_type = cfg.opt["embedding_type"]
         self.embedding_activation = cfg.opt["embedding_activation"]
@@ -92,6 +97,7 @@ class AutoEncoder:
                 embedding_type=self.embedding_type,
                 embedding_activation=self.embedding_activation,
                 depth=self.depth,
+                scale=self.scale,
                 resolution=self.resolution,
                 drop_rate=self.drop_rate,
                 dropout_structure=self.dropout_structure,
@@ -99,14 +105,35 @@ class AutoEncoder:
                 skip=self.skip_connection,
                 asymmetrical=self.asymmetrical,
             )
-        elif self.backbone in ["fully_connected", "fc"]:
-            x_input, bottleneck, output = fully_connected_auto_encoder(
+        elif self.backbone in ["small_resnet", "small_residual"]:
+            x_input, bottleneck, output = small_residual_auto_encoder(
                 input_shape=self.input_shape,
                 embedding_size=self.embedding_size,
+                embedding_type=self.embedding_type,
                 embedding_activation=self.embedding_activation,
+                depth=self.depth,
+                scale=self.scale,
+                resolution=self.resolution,
                 drop_rate=self.drop_rate,
+                dropout_structure=self.dropout_structure,
                 noise=self.embedding_noise,
-                skip=self.skip_connection
+                skip=self.skip_connection,
+                asymmetrical=self.asymmetrical,
+            )
+        elif self.backbone in ["convnext"]:
+            x_input, bottleneck, output = convnext_auto_encoder(
+                input_shape=self.input_shape,
+                embedding_size=self.embedding_size,
+                embedding_type=self.embedding_type,
+                embedding_activation=self.embedding_activation,
+                depth=self.depth,
+                scale=self.scale,
+                resolution=self.resolution,
+                drop_rate=self.drop_rate,
+                dropout_structure=self.dropout_structure,
+                noise=self.embedding_noise,
+                skip=self.skip_connection,
+                asymmetrical=self.asymmetrical,
             )
         elif self.backbone in ["linear", "lin"]:
             x_input, bottleneck, output = linear_auto_encoder(
@@ -234,7 +261,7 @@ class AutoEncoder:
 
         callback_list = [checkpoint, reduce_lr, early_stop, csv_logger]
 
-        print("[INFO] Training started.")
+        print("[INFO] Training started. Results: {}".format(self.model_folder))
         history = self.model.fit(
             x=training_generator,
             validation_data=validation_generator,

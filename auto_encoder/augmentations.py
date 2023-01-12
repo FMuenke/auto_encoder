@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 from skimage.transform import rotate
-from sklearn.feature_extraction.image import extract_patches_2d, reconstruct_from_patches_2d
+from skimage import transform as tf
 
 
 class ChannelShift:
@@ -96,11 +96,25 @@ class SaltNPepper:
 
 
 def apply_noise(img, tar, percentage):
+    img_size = np.random.choice([img.shape[0], img.shape[1]])
+    grain_size = np.random.choice([
+        int(1 / 32 * img_size),
+        int(2 / 32 * img_size),
+        int(4 / 32 * img_size),
+        int(8 / 32 * img_size)
+    ])
     noise = SaltNPepper(
         max_delta=int(percentage * 256),
-        grain_size=np.random.choice([1, 2, 4, 8])
+        grain_size=grain_size
     )
     return noise.apply(img), tar
+
+
+def apply_warp(img, lab, percentage):
+    img = img.astype(np.float32) / 255
+    afine_tf = tf.AffineTransform(shear=np.random.choice([-1, 1]) * percentage)
+    modified = tf.warp(img, inverse_map=afine_tf)
+    return 255 * modified, lab
 
 
 def apply_blur(img, lab, percentage):
@@ -132,27 +146,18 @@ def apply_vertical_flip(img, lab, percentage):
     return img, lab
 
 
-def apply_crop(img, lab, percentage):
+def apply_crop(img, lab, percentage=0.10):
     height, width, ch = img.shape
-    prz_zoom = 0.10
-    w_random = int(width * prz_zoom)
-    h_random = int(height * prz_zoom)
-    if w_random > 0:
-        x1_img = np.random.randint(w_random)
-        x2_img = width - np.random.randint(w_random)
-    else:
-        x1_img = 0
-        x2_img = width
+    percentage = np.sqrt(100 * 100 * (1 - percentage)) / 100
 
-    if h_random > 0:
-        y1_img = np.random.randint(h_random)
-        y2_img = height - np.random.randint(h_random)
-    else:
-        y1_img = 0
-        y2_img = height
+    crop_height = int(percentage * height)
+    crop_width = int(percentage * width)
 
-    img = img[y1_img:y2_img, x1_img:x2_img, :]
-    lab = lab[y1_img:y2_img, x1_img:x2_img, :]
+    y1_img = np.random.randint(height - crop_height)
+    x1_img = np.random.randint(width - crop_width)
+
+    img = img[y1_img:y1_img + crop_height, x1_img:x1_img + crop_width, :]
+    lab = lab[y1_img:y1_img + crop_height, x1_img:x1_img + crop_width, :]
     return img, lab
 
 
@@ -202,9 +207,27 @@ def apply_mask(img, lab, percentage):
     mask_width = int(percentage * width)
     y1_img = np.random.randint(height - mask_height)
     x1_img = np.random.randint(width - mask_width)
-    img[y1_img:y1_img + mask_height, x1_img:x1_img + mask_width, 0] = np.random.randint(0, 255)
-    img[y1_img:y1_img + mask_height, x1_img:x1_img + mask_width, 1] = np.random.randint(0, 255)
-    img[y1_img:y1_img + mask_height, x1_img:x1_img + mask_width, 2] = np.random.randint(0, 255)
+
+    mask = np.random.randint(0, 255, size=[mask_height, mask_width, 3])
+    img[y1_img:y1_img + mask_height, x1_img:x1_img + mask_width, :] = mask
+    return img, lab
+
+
+def apply_imagine_mask(img, lab, percentage):
+    height, width, ch = img.shape
+    # Recalculate percentage to cover defined percentage of image
+    percentage = np.sqrt(100*100*percentage) / 100
+
+    mask_height = int(percentage * height)
+    mask_width = int(percentage * width)
+    y1_img = np.random.randint(height - mask_height)
+    x1_img = np.random.randint(width - mask_width)
+
+    lab = lab[y1_img:y1_img + mask_height, x1_img:x1_img + mask_width, :]
+    lab = cv2.resize(lab, (width, height), interpolation=cv2.INTER_CUBIC)
+
+    mask = np.random.randint(0, 255, size=[mask_height, mask_width, 3])
+    img[y1_img:y1_img + mask_height, x1_img:x1_img + mask_width, :] = mask
     return img, lab
 
 
@@ -242,12 +265,24 @@ def apply_blackhole_mask(img, lab, percentage):
     return img, lab
 
 
-def apply_to_edge_image(img, tar, percentage):
+def apply_imagine(img, lab, percentage):
     height, width, ch = img.shape
-    k = 7
-    for c in range(3):
-        img[:, :, c] = 255 * norm(cv2.Laplacian(img[:, :, c], -1, ksize=k))
-    return img, tar
+    cut_of = int(width * percentage)
+
+    if np.random.randint(100) > 75:
+        img, lab = apply_rotation_90(img, lab, 0.0)
+
+    if np.random.randint(100) > 75:
+        img, lab = apply_vertical_flip(img, lab, 0.0)
+
+    if np.random.randint(100) > 75:
+        img, lab = apply_horizontal_flip(img, lab, 0.0)
+
+    img = img[:, :cut_of, :]
+    lab = lab[:, cut_of:, :]
+    img = cv2.resize(img, (width, height), interpolation=cv2.INTER_CUBIC)
+    lab = cv2.resize(lab, (width, height), interpolation=cv2.INTER_CUBIC)
+    return img, lab
 
 
 def apply_cross_cut(img, lab, percentage):
@@ -344,6 +379,47 @@ def apply_patch_shuffling(img, lab, n_patches=8, percentage=0.25):
     return img, lab
 
 
+def apply_imagine_patches(img, lab, n_patches=8, percentage=0.25):
+    height, width, ch = img.shape
+    size = 128
+    img = cv2.resize(img, (size, size), interpolation=cv2.INTER_CUBIC)
+    patches = img_to_patches(img, int(size / n_patches))
+
+    patch_selected = np.arange(len(patches))
+    patch_selected = np.random.choice(patch_selected, int(percentage * len(patches)), replace=False)
+
+    for p_i, patch in enumerate(patches):
+        if p_i in patch_selected:
+            patch = np.random.randint(0, 255, size=patch.shape)
+        patches[p_i] = patch
+    img = patches_to_img(patches, size)
+    img = cv2.resize(img, (width, height), interpolation=cv2.INTER_CUBIC)
+    return img, lab
+
+
+def apply_patch_shuffling_v2(img, lab, percentage=0.25):
+    height, width, ch = img.shape
+    n_patches = np.random.choice([4, 8, 16, 32])
+    size = 128
+    img = cv2.resize(img, (size, size), interpolation=cv2.INTER_CUBIC)
+    patches = img_to_patches(img, int(size / n_patches))
+
+    patch_selected = np.arange(len(patches))
+    patch_selected = np.random.choice(patch_selected, int(percentage * len(patches)), replace=False)
+    patch_shuffled = np.copy(patch_selected)
+    np.random.shuffle(patch_shuffled)
+
+    patch_mapping = {i: j for i, j in zip(patch_selected, patch_shuffled)}
+
+    for p_i, patch in enumerate(patches):
+        if p_i in patch_selected:
+            patch = patches[patch_mapping[p_i]]
+        patches[p_i] = patch
+    img = patches_to_img(patches, size)
+    img = cv2.resize(img, (width, height), interpolation=cv2.INTER_CUBIC)
+    return img, lab
+
+
 class Augmentations:
     def __init__(self,
                  neutral=1.0,
@@ -355,7 +431,7 @@ class Augmentations:
                  blurring=0.0,
                  noise=0.0,
                  flip_rotate90=1.0,
-                 crop=1.0):
+                 crop=0.10):
 
         self.tasks = [
             {"name": "NEUTRAL", "function": dummy_function, "percentage": neutral},
@@ -395,10 +471,13 @@ class EncoderTask:
                  cross_cut=0.0,
                  patch_rotation=0.0,
                  patch_shuffling=0.0,
+                 warp=0.0,
                  black_hole=0.0,
                  blurring=0.0,
                  noise=0.0,
-                 flip_rotate90=0.0):
+                 imagine_mask=0.0,
+                 imagine_patches=0.0,
+                 ):
 
         self.tasks = [
             {"name": "NEUTRAL", "function": dummy_function, "percentage": neutral},
@@ -409,9 +488,9 @@ class EncoderTask:
             {"name": "BLACKHOLE_MASKING", "function": apply_blackhole_mask, "percentage": black_hole},
             {"name": "BLURRING", "function": apply_blur, "percentage": blurring},
             {"name": "NOISE", "function": apply_noise, "percentage": noise},
-            {"name": "ROTATION", "function": apply_rotation_90, "percentage": flip_rotate90},
-            {"name": "VERTICAL_FLIP", "function": apply_vertical_flip, "percentage": flip_rotate90},
-            {"name": "HORIZONTAL_FLIP", "function": apply_horizontal_flip, "percentage": flip_rotate90},
+            {"name": "WARP", "function": apply_warp, "percentage": warp},
+            {"name": "IMAGINE_MASK", "function": apply_imagine_mask, "percentage": imagine_mask},
+            {"name": "IMAGINE_PATCHES", "function": apply_imagine_patches, "percentage": imagine_patches},
         ]
 
         self.active_tasks = [t for t in self.tasks if t["percentage"] > 0.0]
@@ -451,6 +530,18 @@ def tests():
     img = cv2.imread("./test_image/test_traffic_sign.png")
     img, _ = apply_noise(img, img, percentage=0.90)
     cv2.imwrite("./test_image/test_traffic_sign_noise.png", img)
+
+    img = cv2.imread("./test_image/test_traffic_sign.png")
+    img, _ = apply_warp(img, img, percentage=0.25)
+    cv2.imwrite("./test_image/test_traffic_sign_warp.png", img)
+
+    img = cv2.imread("./test_image/test_traffic_sign.png")
+    img, _ = apply_imagine_patches(img, img, percentage=0.25)
+    cv2.imwrite("./test_image/test_traffic_sign_imagine_patches.png", img)
+
+    img = cv2.imread("./test_image/test_traffic_sign.png")
+    img, lab = apply_imagine_mask(img, img, percentage=0.25)
+    cv2.imwrite("./test_image/test_traffic_sign_imagine_mask.png", lab)
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@ import pandas as pd
 from tqdm import tqdm
 from auto_encoder.data_set import DataSet
 from auto_encoder.image_classifier import ImageClassifier
+from auto_encoder.hybrid_image_classifier import HybridImageClassifier
 
 from auto_encoder.util import save_dict, check_n_make_dir, load_dict
 
@@ -40,7 +41,11 @@ def main(args_):
     else:
         raise Exception("NO CONFIG FOUND!")
 
-    clf = ImageClassifier(mf, cfg, class_mapping)
+    if cfg.opt["type"] == "hybrid":
+        clf = HybridImageClassifier(mf, cfg, class_mapping)
+    else:
+        clf = ImageClassifier(mf, cfg, class_mapping)
+
     clf.build(False)
 
     ds.load()

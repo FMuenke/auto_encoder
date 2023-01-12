@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 
-from auto_encoder.essentials import relu_bn, add_dropout_2d
+from auto_encoder.essentials import relu_bn, add_dropout_2d, make_residual_encoder_block
 from auto_encoder.residual import make_encoder_stack, make_decoder_stack
 from auto_encoder.linear import make_decoder_stack as make_linear_decoder_stack
 from auto_encoder.embedding import Embedding, transform_to_feature_maps
@@ -28,17 +28,19 @@ def still_auto_encoder(
 
     x = make_encoder_stack(input_layer, depth, resolution)
 
-    batch_size, f_m_h, f_m_w, n_features = x.shape
+    x = add_dropout_2d(x, drop_rate, dropout_structure)
+    batch_size, height, width, n_features = x.shape
+    pool_s = int(height / 2)
+    x = layers.AvgPool2D((pool_s, pool_s), strides=pool_s)(x)
 
-    latent = layers.Conv2D(embedding_size, (1, 1), strides=1, padding="same")(x)
-    relu_bn(latent)
-    latent = add_dropout_2d(latent, drop_rate, dropout_structure)
-    bottleneck = layers.GlobalAvgPool2D()(latent)
-    x = layers.Flatten()(latent)
-    x = layers.Dense(embedding_size)(x)
+    x = make_residual_encoder_block(x, [
+        int(0.5 * embedding_size), int(0.5 * embedding_size), embedding_size
+    ], ident="EMBEDDING", downsample=True)
 
-    x = transform_to_feature_maps(x, f_m_h, f_m_w, embedding_size)
-    x = make_decoder_stack(x, depth, resolution)
+    bottleneck = layers.GlobalAvgPool2D()(x)
+
+    x = layers.UpSampling2D((2 * pool_s, 2 * pool_s))(x)
+    x = make_decoder_stack(x, depth, resolution=resolution)
 
     output = layers.Conv2DTranspose(3, 1, 1, padding='same', activation='linear', name='final')(x)
     return input_layer, bottleneck, output

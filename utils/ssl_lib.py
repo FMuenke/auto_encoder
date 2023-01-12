@@ -2,22 +2,15 @@ import os
 import numpy as np
 import pandas as pd
 
-# from umap import UMAP
 
 import tensorflow as tf
 import tensorflow_addons as tfa
 from tensorflow import keras
 
-from sklearn.decomposition import PCA
-from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split
-from sklearn.neural_network import MLPClassifier
-from sklearn.linear_model import LogisticRegression, LogisticRegressionCV, RidgeClassifierCV
-from sklearn import ensemble
+from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
 from sklearn import neighbors
-from sklearn.gaussian_process import GaussianProcessClassifier, kernels
 from sklearn.metrics import f1_score, accuracy_score, top_k_accuracy_score
-from sklearn.model_selection import GridSearchCV
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -156,18 +149,10 @@ def cls_test_run(x_train, y_train, x_test, y_test, n_labels, run_id):
     return data_frame
 
 
-def eval_semi_supervised_classification(x_train, y_train, x_test, y_test, save_path, direct_features, dim_reduction=False):
+def eval_semi_supervised_classification(x_train, y_train, x_test, y_test, save_path, direct_features):
     data_frame = []
 
-    if dim_reduction:
-        n_components = int(x_train.shape[1] / 4)
-        print("Reducing to {} Components".format(n_components))
-        decomp = PCA(n_components=n_components)
-        x_train = decomp.fit_transform(x_train)
-        x_test = decomp.transform(x_test)
-
     for n_labels in [400, 2500, 4000, 10000]:
-        # feature_space_projection(x_train, y_train, x_test, y_test, n_labels, save_path)
         for i in range(1):
             data_frame_p = cls_test_run(x_train, y_train, x_test, y_test, n_labels, i)
             data_frame.append(data_frame_p)

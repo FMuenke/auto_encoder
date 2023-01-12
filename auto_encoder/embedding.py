@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow.keras import layers
 
-from auto_encoder.essentials import relu_bn
+from auto_encoder.essentials import relu_bn, mlp
 
 
 def create_dense_encoder(x, embedding_size):
@@ -94,6 +94,13 @@ class Embedding:
             bottleneck = create_dense_encoder(latent, self.embedding_size)
         elif self.embedding_type == "glob_max":
             latent = self.add_pooling_op(x, "max")
+            bottleneck = create_dense_encoder(latent, self.embedding_size)
+        elif self.embedding_type == "conv":
+            latent = self.add_conv_layer(x, self.embedding_size, kernel_size=1)
+            bottleneck = self.add_pooling_op(latent, "avg")
+        elif self.embedding_type == "glob_avg_mlp":
+            latent = self.add_pooling_op(x, "avg")
+            latent = mlp(latent, [2 * self.embedding_size], dropout_rate=0.25)
             bottleneck = create_dense_encoder(latent, self.embedding_size)
         elif self.embedding_type == "direct_avg":
             self.activation = "XX"

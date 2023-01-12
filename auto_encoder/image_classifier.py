@@ -9,12 +9,11 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping, CSVLogger
 
 
-from auto_encoder.residual import residual_classifier, residual_classifier_wo_embedding
+from auto_encoder.residual import residual_classifier, residual_classifier_wo_embedding, residual_classifier_wo_extra_block
+from auto_encoder.conv_next import conv_next_classifier_wo_embedding
 from auto_encoder.linear import linear_auto_encoder
 from auto_encoder.vision_transformer import vit_auto_encoder
 from auto_encoder.data_generator import ClassificationDataGenerator
-
-from utils.ssl_lib import TfMlp
 
 from auto_encoder.util import check_n_make_dir
 from auto_encoder.util import prepare_input
@@ -40,7 +39,10 @@ class ImageClassifier:
         self.dropout_structure = cfg.opt["dropout_structure"]
         self.embedding_noise = cfg.opt["embedding_noise"]
         self.freeze = cfg.opt["freeze"]
-        self.scale = cfg.opt["scale"]
+        if "scale" not in cfg.opt:
+            self.scale = 0
+        else:
+            self.scale = cfg.opt["scale"]
 
         self.model = None
 
@@ -74,6 +76,7 @@ class ImageClassifier:
                 embedding_type=self.embedding_type,
                 embedding_activation=self.embedding_activation,
                 depth=self.depth,
+                scale=self.scale,
                 resolution=self.resolution,
                 drop_rate=self.drop_rate,
                 dropout_structure=self.dropout_structure,
@@ -91,6 +94,58 @@ class ImageClassifier:
                 noise=self.embedding_noise,
                 n_classes=len(self.class_mapping),
             )
+        elif self.backbone in ["b-residual"]:
+            x_in, output = residual_classifier_wo_extra_block(
+                input_shape=self.input_shape,
+                embedding_size=self.embedding_size,
+                embedding_type=self.embedding_type,
+                embedding_activation=self.embedding_activation,
+                depth=self.depth,
+                scale=self.scale,
+                resolution=self.resolution,
+                drop_rate=self.drop_rate,
+                dropout_structure=self.dropout_structure,
+                noise=self.embedding_noise,
+                n_classes=len(self.class_mapping),
+            )
+        elif self.backbone in ["d-conv-next"]:
+            x_in, output = conv_next_classifier_wo_embedding(
+                input_shape=self.input_shape,
+                depth=self.depth,
+                resolution=self.resolution,
+                scale=self.scale,
+                drop_rate=self.drop_rate,
+                dropout_structure=self.dropout_structure,
+                noise=self.embedding_noise,
+                n_classes=len(self.class_mapping),
+            )
+        elif self.backbone in ["xception"]:
+            base_model = keras.applications.xception.Xception(
+                weights=None,
+                include_top=False,
+                pooling="avg",
+                input_shape=(self.input_shape[0], self.input_shape[1], 3),
+            )
+            x_in, output = base_model.input, base_model.output
+            output = layers.Dense(len(self.class_mapping), name="clf_output")(output)
+        elif self.backbone in ["resnet50"]:
+            base_model = keras.applications.resnet.ResNet50(
+                weights=None,
+                include_top=False,
+                pooling="avg",
+                input_shape=(self.input_shape[0], self.input_shape[1], 3),
+            )
+            x_in, output = base_model.input, base_model.output
+            output = layers.Dense(len(self.class_mapping), name="clf_output")(output)
+        elif self.backbone in ["imagenet-resnet50"]:
+            base_model = keras.applications.resnet.ResNet50(
+                weights="imagenet",
+                include_top=False,
+                pooling="avg",
+                input_shape=(self.input_shape[0], self.input_shape[1], 3),
+            )
+            x_in, output = base_model.input, base_model.output
+            output = layers.Dense(len(self.class_mapping), name="clf_output")(output)
         else:
             raise ValueError("{} Backbone was not recognised".format(self.backbone))
 
@@ -105,7 +160,7 @@ class ImageClassifier:
                 if str(layer.name).startswith("clf_"):
                     continue
                 layer.trainable = False
-        print(self.model.summary())
+
         self.load()
         if compile_model:
             self.model.compile(

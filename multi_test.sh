@@ -1,7 +1,7 @@
 #!/bin/sh
 
-models="../../ai_models/AE-RESIDUAL.4/"
-data="../../datasets/cifar-100"
+models="../AE.1/"
+data="../cifar-100"
 
 for each in $models/*
 do

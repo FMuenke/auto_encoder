@@ -4,7 +4,7 @@ from tensorflow.keras import layers
 from auto_encoder.essentials import mlp, add_dropout_1d
 
 from auto_encoder.embedding import Embedding, transform_to_feature_maps, transform_to_features
-from auto_encoder.linear import make_decoder_stack
+from auto_encoder.residual import make_decoder_stack
 
 
 class Patches(layers.Layer):
