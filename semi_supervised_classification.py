@@ -78,12 +78,16 @@ def get_data_sets(ds_path_train, ds_path_test, model_path, class_mapping, direct
 def vis_embeddings(x_train, y_train, x_test, y_test, path):
     n_components = 2
     print("Reducing to {} Components".format(n_components))
-    decomp = PCA(n_components=n_components)
-    x_train_dec = decomp.fit_transform(x_train)
-    x_test_dec = decomp.transform(x_test)
+    if x_train.shape[1] > 2:
+        decomp = PCA(n_components=n_components)
+        x_train_dec = decomp.fit_transform(x_train)
+        x_test_dec = decomp.transform(x_test)
+    else:
+        x_train_dec = x_train
+        x_test_dec = x_test
+
     df_trn = pd.DataFrame({"x1": x_train_dec[:, 0], "x2": x_train_dec[:, 1], "class": y_train})
     df_tst = pd.DataFrame({"x1": x_test_dec[:, 0], "x2": x_test_dec[:, 1], "class": y_test})
-
     fig, ax = plt.subplots(1, 2, figsize=(10, 5))
     sns.scatterplot(ax=ax[0], data=df_trn, x="x1", y="x2", hue="class", style="class", legend=False)
     sns.scatterplot(ax=ax[1], data=df_tst, x="x1", y="x2", hue="class", style="class", legend=False)

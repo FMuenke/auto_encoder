@@ -423,7 +423,7 @@ def plot_architecture_impact(data_frame, result_path):
         "clf": ["MLP"],
         "type": "ae",
         "n_labels": 10000,
-        "depth": [2, 4],
+        "depth": [1, 2, 4],
         "scale": 0,
         "drop_rate": 0.0,
         "dropout_structure": "general",
@@ -438,11 +438,19 @@ def plot_architecture_impact(data_frame, result_path):
     }
     lr_data_frame = select_properties(data_frame, properties)
 
-    fig, axs = plt.subplots(1, 2, figsize=(14, 7))
-    sns.lineplot(ax=axs[0], data=lr_data_frame[lr_data_frame["depth"] == 2],
+    fig, axs = plt.subplots(1, 3, figsize=(21, 7))
+    sns.lineplot(ax=axs[0], data=lr_data_frame[lr_data_frame["depth"] == 1],
                  x="resolution", y="Accuracy", style="asymmetrical", markers=True, hue="embedding_size")
-    sns.lineplot(ax=axs[1], data=lr_data_frame[lr_data_frame["depth"] == 4],
+    sns.lineplot(ax=axs[1], data=lr_data_frame[lr_data_frame["depth"] == 2],
                  x="resolution", y="Accuracy", style="asymmetrical", markers=True, hue="embedding_size")
+    sns.lineplot(ax=axs[2], data=lr_data_frame[lr_data_frame["depth"] == 4],
+                 x="resolution", y="Accuracy", style="asymmetrical", markers=True, hue="embedding_size")
+
+    axs[0].set_title("Depth: 1")
+    axs[1].set_title("Depth: 2")
+    axs[2].set_title("Depth: 4")
+    for ax in axs:
+        ax.set_ylim([0.15, 0.35])
     # g = sns.FacetGrid(lr_data_frame, col="embedding_size", row="asymmetrical", hue="depth")
     # g.map(sns.lineplot, "resolution", "Accuracy")
     # g.add_legend()
@@ -498,6 +506,32 @@ def plot_dropout_impact(data_frame, result_path):
         style="dropout_structure"
     )
     plt.savefig(os.path.join(result_path, "dropout_impact_skipp.png"))
+    plt.close()
+
+    properties = {
+        "type": ["ae"],
+        "clf": ["MLP"],
+        "n_labels": 10000,
+        "depth": [2], "scale": 0, "resolution": [16],
+        "embedding_size": [256],
+        "embedding_noise": 0.0,
+        "task": "reconstruction",
+        "task_difficulty": 0.0,
+        "embedding_type": "glob_avg",
+        "embedding_activation": "linear",
+        "backbone": ["patch-residual"],
+        "asymmetrical": False, "skip": False
+    }
+    lr_data_frame = select_properties(data_frame, properties)
+    sns.lineplot(
+        data=lr_data_frame,
+        x="drop_rate",
+        y="Accuracy",
+        hue="dropout_structure",
+        markers=True,
+        style="dropout_structure"
+    )
+    plt.savefig(os.path.join(result_path, "dropout_impact_patch.png"))
     plt.close()
 
 

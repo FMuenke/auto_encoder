@@ -5,7 +5,7 @@ from auto_encoder.embedding import Embedding, transform_to_feature_maps
 from auto_encoder.sampling_layer import Sampling
 
 from auto_encoder.essentials import make_residual_encoder_block, make_clf_residual_encoder_block
-from auto_encoder.essentials import add_classification_head, make_residual_decoder_block
+from auto_encoder.essentials import add_classification_head, make_residual_decoder_block, relu_bn, add_dropout_2d
 
 
 def make_encoder_stack(input_layer, depth, resolution, scale=0):
@@ -137,6 +137,64 @@ def residual_classifier(
 
     output = add_classification_head(x, n_classes=n_classes, hidden_units=[512], dropout_rate=0.75)
     return input_layer, output
+
+
+def patchify_residual_auto_encoder(
+        input_shape,
+        embedding_size,
+        embedding_type,
+        embedding_activation,
+        depth,
+        scale,
+        resolution,
+        drop_rate,
+        dropout_structure,
+        noise,
+        skip,
+        asymmetrical,
+        patch_size=4
+):
+    input_sizes = {512: 0, 256: 0, 128: 0, 64: 0, 32: 0, }
+    assert input_shape[0] == input_shape[1], "Only Squared Inputs! - {} / {} -".format(input_shape[0], input_shape[1])
+    assert input_shape[0] in input_sizes, "Input Size is not supported ({})".format(input_shape[0])
+    input_layer = layers.Input(batch_shape=(None, input_shape[0], input_shape[1], input_shape[2]))
+
+    x = layers.Convolution2D(8 * resolution, (patch_size, patch_size), (patch_size, patch_size), name="PATCHIFY")(input_layer)
+    x = relu_bn(x, name="PATCHIFY_NORM")
+
+    if dropout_structure.startswith("patch_"):
+        print("[INFO] PATCH DROPOUT ACTIVE")
+        dropout_structure = dropout_structure.replace("patch_", "")
+        x = add_dropout_2d(x, drop_rate, dropout_structure)
+        # REMOVE DROPOUT FOR EMBEDDING
+        drop_rate = 0
+        dropout_structure = ""
+
+    x = make_encoder_stack(x, depth, resolution, scale=scale)
+
+    emb = Embedding(
+        embedding_size=embedding_size,
+        embedding_type=embedding_type,
+        activation=embedding_activation,
+        drop_rate=drop_rate,
+        dropout_structure=dropout_structure,
+        noise=noise,
+        skip=skip,
+    )
+    bottleneck, x = emb.build(x)
+
+    reshape_layer_dim = input_shape[0] / (2 ** depth)
+    assert reshape_layer_dim in [2 ** count for count in [0, 1, 2, 3, 4, 5, 6]]
+
+    if asymmetrical:
+        x = transform_to_feature_maps(x, reshape_layer_dim, reshape_layer_dim, embedding_size)
+        x = make_decoder_stack(x, depth, resolution=1)
+    else:
+        x = transform_to_feature_maps(x, reshape_layer_dim, reshape_layer_dim, embedding_size)
+        x = make_decoder_stack(x, depth, resolution, scale=scale)
+
+    output = layers.Conv2DTranspose(3, 3, 1, padding='same', activation='linear', name='conv_transpose_5')(x)
+    return input_layer, bottleneck, output
 
 
 def residual_auto_encoder(

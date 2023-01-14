@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 
 from auto_encoder.auto_encoder import AutoEncoder
 from auto_encoder.residual import residual_variational_auto_encoder
-from auto_encoder.fully_connected import variational_fully_connected_auto_encoder
 from auto_encoder.linear import linear_variational_auto_encoder
 from auto_encoder.variational_auto_encoder_engine import VariationalAutoEncoderEngine
 
@@ -34,11 +33,6 @@ class VariationalAutoEncoder(AutoEncoder):
                 embedding_type=self.embedding_type,
                 depth=self.depth,
                 resolution=self.resolution,
-            )
-        elif self.backbone in ["fully_connected", "fc"]:
-            encoder, decoder = variational_fully_connected_auto_encoder(
-                input_shape=self.input_shape,
-                embedding_size=self.embedding_size,
             )
         else:
             raise ValueError("{} Backbone was not recognised".format(self.backbone))

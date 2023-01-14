@@ -137,9 +137,9 @@ class ImageClassifier:
             )
             x_in, output = base_model.input, base_model.output
             output = layers.Dense(len(self.class_mapping), name="clf_output")(output)
-        elif self.backbone in ["imagenet-resnet50"]:
-            base_model = keras.applications.resnet.ResNet50(
-                weights="imagenet",
+        elif self.backbone in ["efficientnetB0"]:
+            base_model = keras.applications.efficientnet.EfficientNetB0(
+                weights=None,
                 include_top=False,
                 pooling="avg",
                 input_shape=(self.input_shape[0], self.input_shape[1], 3),

@@ -7,7 +7,7 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping, CSVLogger
 
 
-from auto_encoder.residual import residual_auto_encoder
+from auto_encoder.residual import residual_auto_encoder, patchify_residual_auto_encoder
 from auto_encoder.conv_next import convnext_auto_encoder
 from auto_encoder.linear import linear_auto_encoder
 from auto_encoder.mlp import mlp_auto_encoder
@@ -92,6 +92,21 @@ class AutoEncoder:
     def get_backbone(self):
         if self.backbone in ["resnet", "residual"]:
             x_input, bottleneck, output = residual_auto_encoder(
+                input_shape=self.input_shape,
+                embedding_size=self.embedding_size,
+                embedding_type=self.embedding_type,
+                embedding_activation=self.embedding_activation,
+                depth=self.depth,
+                scale=self.scale,
+                resolution=self.resolution,
+                drop_rate=self.drop_rate,
+                dropout_structure=self.dropout_structure,
+                noise=self.embedding_noise,
+                skip=self.skip_connection,
+                asymmetrical=self.asymmetrical,
+            )
+        elif self.backbone in ["patch-resnet", "patch-residual"]:
+            x_input, bottleneck, output = patchify_residual_auto_encoder(
                 input_shape=self.input_shape,
                 embedding_size=self.embedding_size,
                 embedding_type=self.embedding_type,
