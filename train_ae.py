@@ -3,6 +3,7 @@ import tensorflow as tf
 from auto_encoder.data_set import DataSet
 from auto_encoder.auto_encoder import AutoEncoder
 from auto_encoder.simple_siamse_network import SimpleSiameseNetwork
+from auto_encoder.barlow_twin_network import BarlowTwinNetwork
 from auto_encoder.variational_auto_encoder import VariationalAutoEncoder
 
 from auto_encoder.augmentations import Augmentations, EncoderTask
@@ -58,6 +59,9 @@ def main(args_):
             ae.build(add_decoder=True)
         elif cfg.opt["type"] == "simsiam":
             ae = SimpleSiameseNetwork(mf, cfg)
+            ae.build(True)
+        elif cfg.opt["type"] == "barlowtwin":
+            ae = BarlowTwinNetwork(mf, cfg)
             ae.build(True)
         else:
             raise Exception("UNKNOWN TYPE: {}".format(cfg.opt["type"]))
