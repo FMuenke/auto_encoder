@@ -350,7 +350,6 @@ def plot_asymmetry_impact(data_frame, result_path):
         # "asymmetrical": False,
     }
     lr_data_frame = select_properties(data_frame, properties)
-    print(lr_data_frame)
     fig, axs = plt.subplots(1, 2, figsize=(14, 7))
     sns.lineplot(ax=axs[0], data=lr_data_frame[lr_data_frame["backbone"] == "linear"],
                  x="resolution", y="Accuracy", style="Label (Asym.)", markers=True, hue="embedding_size")
@@ -392,7 +391,7 @@ def plot_architecture_impact(data_frame, result_path):
     properties = {
         "clf": ["MLP"],
         "n_labels": 10000,
-        "depth": [2], # "scale": 0,
+        "depth": [2], "scale": 0,
         "drop_rate": 0.0,
         "dropout_structure": "general",
         "embedding_noise": 0.0,
@@ -411,12 +410,20 @@ def plot_architecture_impact(data_frame, result_path):
     plt.savefig(os.path.join(result_path, "architecture_impact.png"))
     plt.close()
 
+    lr_data_frame = select_properties(lr_data_frame, {"type": "ae", "backbone": "residual"})
     sns.lineplot(
-        data=lr_data_frame[lr_data_frame["type"] == "ae"],
+        data=lr_data_frame,
         x="resolution", y="Accuracy", hue="embedding_size",
-        style="backbone", markers=True,
+        style="embedding_size", markers=True,
     )
     plt.savefig(os.path.join(result_path, "architecture_impact_2.png"))
+    plt.close()
+    sns.lineplot(
+        data=lr_data_frame,
+        x="embedding_size", y="Accuracy", hue="resolution",
+        style="resolution", markers=True,
+    )
+    plt.savefig(os.path.join(result_path, "architecture_impact_3.png"))
     plt.close()
 
     properties = {

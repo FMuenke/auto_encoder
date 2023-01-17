@@ -118,7 +118,22 @@ class AutoEncoder:
                 dropout_structure=self.dropout_structure,
                 noise=self.embedding_noise,
                 skip=self.skip_connection,
-                asymmetrical=self.asymmetrical,
+                asymmetrical=self.asymmetrical, patch_size=4,
+            )
+        elif self.backbone in ["patch-2-resnet", "patch-2-residual"]:
+            x_input, bottleneck, output = patchify_residual_auto_encoder(
+                input_shape=self.input_shape,
+                embedding_size=self.embedding_size,
+                embedding_type=self.embedding_type,
+                embedding_activation=self.embedding_activation,
+                depth=self.depth,
+                scale=self.scale,
+                resolution=self.resolution,
+                drop_rate=self.drop_rate,
+                dropout_structure=self.dropout_structure,
+                noise=self.embedding_noise,
+                skip=self.skip_connection,
+                asymmetrical=self.asymmetrical, patch_size=2
             )
         elif self.backbone in ["small_resnet", "small_residual"]:
             x_input, bottleneck, output = small_residual_auto_encoder(
@@ -177,6 +192,20 @@ class AutoEncoder:
                 noise=self.embedding_noise,
                 skip=self.skip_connection,
                 asymmetrical=self.asymmetrical
+            )
+        elif self.backbone in ["still-2"]:
+            x_input, bottleneck, output = still_auto_encoder(
+                input_shape=self.input_shape,
+                embedding_size=self.embedding_size,
+                embedding_type=self.embedding_type,
+                embedding_activation=self.embedding_activation,
+                depth=self.depth,
+                resolution=self.resolution,
+                drop_rate=self.drop_rate,
+                dropout_structure=self.dropout_structure,
+                noise=self.embedding_noise,
+                skip=self.skip_connection,
+                asymmetrical=self.asymmetrical, patch_size=2
             )
         elif self.backbone in ["mlp"]:
             x_input, bottleneck, output = mlp_auto_encoder(

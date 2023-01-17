@@ -212,25 +212,6 @@ def apply_mask(img, lab, percentage):
     img[y1_img:y1_img + mask_height, x1_img:x1_img + mask_width, :] = mask
     return img, lab
 
-
-def apply_imagine_mask(img, lab, percentage):
-    height, width, ch = img.shape
-    # Recalculate percentage to cover defined percentage of image
-    percentage = np.sqrt(100*100*percentage) / 100
-
-    mask_height = int(percentage * height)
-    mask_width = int(percentage * width)
-    y1_img = np.random.randint(height - mask_height)
-    x1_img = np.random.randint(width - mask_width)
-
-    lab = lab[y1_img:y1_img + mask_height, x1_img:x1_img + mask_width, :]
-    lab = cv2.resize(lab, (width, height), interpolation=cv2.INTER_CUBIC)
-
-    mask = np.random.randint(0, 255, size=[mask_height, mask_width, 3])
-    img[y1_img:y1_img + mask_height, x1_img:x1_img + mask_width, :] = mask
-    return img, lab
-
-
 def gaus2d(x=0, y=0, mx=0, my=0, sx=1, sy=1):
     return 1. / (2. * np.pi * sx * sy) * np.exp(-((x - mx)**2. / (2. * sx**2.) + (y - my)**2. / (2. * sy**2.)))
 
@@ -489,7 +470,6 @@ class EncoderTask:
             {"name": "BLURRING", "function": apply_blur, "percentage": blurring},
             {"name": "NOISE", "function": apply_noise, "percentage": noise},
             {"name": "WARP", "function": apply_warp, "percentage": warp},
-            {"name": "IMAGINE_MASK", "function": apply_imagine_mask, "percentage": imagine_mask},
             {"name": "IMAGINE_PATCHES", "function": apply_imagine_patches, "percentage": imagine_patches},
         ]
 
@@ -538,10 +518,6 @@ def tests():
     img = cv2.imread("./test_image/test_traffic_sign.png")
     img, _ = apply_imagine_patches(img, img, percentage=0.25)
     cv2.imwrite("./test_image/test_traffic_sign_imagine_patches.png", img)
-
-    img = cv2.imread("./test_image/test_traffic_sign.png")
-    img, lab = apply_imagine_mask(img, img, percentage=0.25)
-    cv2.imwrite("./test_image/test_traffic_sign_imagine_mask.png", lab)
 
 
 if __name__ == "__main__":

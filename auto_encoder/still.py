@@ -27,18 +27,24 @@ def still_auto_encoder(
     assert input_shape[0] in input_sizes, "Input Size is not supported ({})".format(input_shape[0])
     input_layer = layers.Input(batch_shape=(None, input_shape[0], input_shape[1], input_shape[2]))
 
-    x = layers.Convolution2D(8 * resolution, (patch_size, patch_size), (patch_size, patch_size))(input_layer)
-    x = relu_bn(x)
+    x = layers.Convolution2D(
+        filters=16,
+        kernel_size=(patch_size, patch_size),
+        strides=(patch_size, patch_size),
+        name="STEM"
+    )(input_layer)
+
+    x = relu_bn(x, name="STEM-NORM")
 
     x = add_dropout_2d(x, drop_rate, dropout_structure)
 
     x = make_encoder_stack(x, depth, resolution)
 
-    x = make_residual_encoder_block(x, [
-        int(0.5 * embedding_size), int(0.5 * embedding_size), embedding_size
-    ], ident="EMBEDDING", downsample=True)
+    x = layers.Convolution2D(embedding_size, (1, 1))(x)
 
     bottleneck = layers.GlobalAvgPool2D()(x)
+
+    x = layers.UpSampling2D((patch_size, patch_size))(x)
 
     x = make_decoder_stack(x, depth, resolution=resolution)
 
