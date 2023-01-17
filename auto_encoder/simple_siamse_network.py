@@ -1,36 +1,40 @@
-import os
 import numpy as np
-from tensorflow import keras
-from tensorflow.keras.losses import CategoricalCrossentropy
-
+import os
 import pickle
-from tensorflow.keras.models import Model
+from tensorflow import keras
 from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping, CSVLogger
 
-
+from auto_encoder.simple_siamese_data_generator import DataGenerator
 from auto_encoder.auto_encoder import AutoEncoder
-from auto_encoder.essentials import add_classification_head
-from auto_encoder.data_generator import HybridDataGenerator
+from auto_encoder.residual import make_residual_simple_siamese
+from auto_encoder.simple_siamese_network_engine import SimSiamEngine
 
-from auto_encoder.util import check_n_make_dir
-from auto_encoder.util import prepare_input
-
-os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+from auto_encoder.util import check_n_make_dir, prepare_input
 
 
-class HybridImageClassifier(AutoEncoder):
-    def __init__(self, model_folder, cfg, class_mapping):
-        super(HybridImageClassifier, self).__init__(model_folder, cfg)
+class SimpleSiameseNetwork(AutoEncoder):
+    def __init__(self, model_folder, cfg):
+        super(SimpleSiameseNetwork, self).__init__(model_folder, cfg)
         self.metric_to_track = "val_loss"
-        self.class_mapping = class_mapping
 
-    def inference(self, data):
-        data = prepare_input(data, self.input_shape)
-        data = np.expand_dims(data, axis=0)
-        res = self.model.predict_on_batch(data)
-        res = np.array(res[0])[0, :]
-        res = np.argmax(res)
-        return res
+    def get_backbone(self):
+        if self.backbone in ["resnet", "residual"]:
+            encoder, decoder = make_residual_simple_siamese(
+                input_shape=self.input_shape,
+                embedding_size=self.embedding_size,
+                embedding_type=self.embedding_type,
+                embedding_activation=self.embedding_activation,
+                depth=self.depth,
+                scale=self.scale,
+                resolution=self.resolution,
+                noise=0,
+                drop_rate=0.0,
+                dropout_structure="general"
+            )
+        else:
+            raise ValueError("{} Backbone was not recognised".format(self.backbone))
+
+        return SimSiamEngine(encoder, decoder)
 
     def encode(self, data):
         data = prepare_input(data, self.input_shape)
@@ -40,38 +44,17 @@ class HybridImageClassifier(AutoEncoder):
         return res
 
     def build(self, compile_model=True, add_decoder=True):
-        x_input, bottleneck, output = self.get_backbone()
+        if not add_decoder:
+            self.embedding_type = "direct_avg"
+            self.model = self.get_backbone()
+            self.model = self.model.encoder
+        else:
+            self.model = self.get_backbone()
+            self.model(np.zeros((1, self.input_shape[0], self.input_shape[1], 3)))
 
-        classification = add_classification_head(
-            bottleneck, n_classes=len(self.class_mapping), hidden_units=[], dropout_rate=0.0)
-
-        self.model = Model(inputs=x_input, outputs=[classification, output])
         self.load()
         if compile_model:
-            self.model.compile(
-                loss={
-                    "conv_transpose_5": "mean_squared_error",
-                    "clf_final": CategoricalCrossentropy(from_logits=True)
-                },
-                metrics={
-                    "clf_final": keras.metrics.CategoricalAccuracy(name="accuracy")
-                },
-                optimizer=self.optimizer)
-
-    def load(self):
-        model_path = None
-        if os.path.isfile(os.path.join(self.model_folder, "weights-final.hdf5")):
-            model_path = os.path.join(self.model_folder, "weights-final.hdf5")
-        elif os.path.isdir(self.model_folder):
-            pot_models = sorted(os.listdir(self.model_folder))
-            for model in pot_models:
-                if model.lower().endswith((".hdf5", ".h5")):
-                    model_path = os.path.join(self.model_folder, model)
-        if model_path is not None:
-            print("[INFO] Model-Weights are loaded from: {}".format(model_path))
-            self.model.load_weights(model_path, by_name=True)
-        else:
-            print("[INFO] No Weights were found")
+            self.model.compile(optimizer=self.optimizer)
 
     def fit(self, tag_set_train, tag_set_test, augmentations):
         print("[INFO] Training with {} / Testing with {}".format(len(tag_set_train), len(tag_set_test)))
@@ -84,18 +67,16 @@ class HybridImageClassifier(AutoEncoder):
 
         self.batch_size = np.min([len(tag_set_train), len(tag_set_test), self.batch_size])
 
-        training_generator = HybridDataGenerator(
+        training_generator = DataGenerator(
             tag_set_train,
             image_size=self.input_shape,
             batch_size=self.batch_size,
             augmentations=augmentations,
-            class_mapping=self.class_mapping
         )
-        validation_generator = HybridDataGenerator(
+        validation_generator = DataGenerator(
             tag_set_test,
             image_size=self.input_shape,
             batch_size=self.batch_size,
-            class_mapping=self.class_mapping,
         )
 
         checkpoint = ModelCheckpoint(
@@ -125,3 +106,5 @@ class HybridImageClassifier(AutoEncoder):
         )
         with open(os.path.join(self.model_folder, "training_history.pkl"), 'wb') as file_pi:
             pickle.dump(history.history, file_pi)
+
+
