@@ -1,4 +1,5 @@
 import cv2
+import random
 import numpy as np
 from skimage.transform import rotate
 from skimage import transform as tf
@@ -150,14 +151,16 @@ def apply_crop(img, lab, percentage=0.10):
     height, width, ch = img.shape
     percentage = np.sqrt(100 * 100 * (1 - percentage)) / 100
 
-    crop_height = int(percentage * height)
-    crop_width = int(percentage * width)
+    crop_height = np.max([int(percentage * height), 4])
+    crop_width = np.max([int(percentage * width), 4])
 
     y1_img = np.random.randint(height - crop_height)
     x1_img = np.random.randint(width - crop_width)
 
     img = img[y1_img:y1_img + crop_height, x1_img:x1_img + crop_width, :]
     lab = lab[y1_img:y1_img + crop_height, x1_img:x1_img + crop_width, :]
+    img = cv2.resize(img, (width, height), interpolation=cv2.INTER_CUBIC)
+    lab = cv2.resize(lab, (width, height), interpolation=cv2.INTER_CUBIC)
     return img, lab
 
 
@@ -212,6 +215,7 @@ def apply_mask(img, lab, percentage):
     img[y1_img:y1_img + mask_height, x1_img:x1_img + mask_width, :] = mask
     return img, lab
 
+
 def gaus2d(x=0, y=0, mx=0, my=0, sx=1, sy=1):
     return 1. / (2. * np.pi * sx * sy) * np.exp(-((x - mx)**2. / (2. * sx**2.) + (y - my)**2. / (2. * sy**2.)))
 
@@ -243,26 +247,6 @@ def apply_blackhole_mask(img, lab, percentage):
     img = img * g_m
 
     # img[y1_img:y1_img + mask_height, x1_img:x1_img + mask_width, :] = masked_area
-    return img, lab
-
-
-def apply_imagine(img, lab, percentage):
-    height, width, ch = img.shape
-    cut_of = int(width * percentage)
-
-    if np.random.randint(100) > 75:
-        img, lab = apply_rotation_90(img, lab, 0.0)
-
-    if np.random.randint(100) > 75:
-        img, lab = apply_vertical_flip(img, lab, 0.0)
-
-    if np.random.randint(100) > 75:
-        img, lab = apply_horizontal_flip(img, lab, 0.0)
-
-    img = img[:, :cut_of, :]
-    lab = lab[:, cut_of:, :]
-    img = cv2.resize(img, (width, height), interpolation=cv2.INTER_CUBIC)
-    lab = cv2.resize(lab, (width, height), interpolation=cv2.INTER_CUBIC)
     return img, lab
 
 
@@ -403,30 +387,33 @@ def apply_patch_shuffling_v2(img, lab, percentage=0.25):
 
 class Augmentations:
     def __init__(self,
-                 neutral=1.0,
+                 neutral_percentage=0.5,
                  masking=0.0,
                  cross_cut=0.0,
                  patch_rotation=0.0,
                  patch_shuffling=0.0,
-                 black_hole=0.0,
                  blurring=0.0,
                  noise=0.0,
                  flip_rotate90=1.0,
-                 crop=0.10):
+                 crop=0.10,
+                 patch_masking=0.0,
+                 warp=0.0):
+
+        self.neutral = neutral_percentage
 
         self.tasks = [
-            {"name": "NEUTRAL", "function": dummy_function, "percentage": neutral},
             {"name": "MASKING", "function": apply_mask, "percentage": masking},
             {"name": "CROSS_REMOVAL", "function": apply_cross_cut, "percentage": cross_cut},
             {"name": "PATCH_ROTATION", "function": apply_patch_rotation, "percentage": patch_rotation},
             {"name": "PATCH_SHUFFLING", "function": apply_patch_shuffling, "percentage": patch_shuffling},
-            {"name": "BLACKHOLE_MASKING", "function": apply_blackhole_mask, "percentage": black_hole},
             {"name": "BLURRING", "function": apply_blur, "percentage": blurring},
             {"name": "NOISE", "function": apply_noise, "percentage": noise},
             {"name": "ROTATION", "function": apply_rotation_90, "percentage": flip_rotate90},
             {"name": "VERTICAL_FLIP", "function": apply_vertical_flip, "percentage": flip_rotate90},
             {"name": "HORIZONTAL_FLIP", "function": apply_horizontal_flip, "percentage": flip_rotate90},
             {"name": "CROP", "function": apply_crop, "percentage": crop},
+            {"name": "WARP", "function": apply_warp, "percentage": warp},
+            {"name": "PATCH_MASKING", "function": apply_imagine_patches, "percentage": patch_masking},
         ]
 
         self.active_tasks = [t for t in self.tasks if t["percentage"] > 0.0]
@@ -434,11 +421,15 @@ class Augmentations:
     def apply(self, img, tar):
         if len(self.active_tasks) == 0:
             return img, tar
-        task_to_apply = np.random.choice(self.active_tasks)
-        percentage = np.random.randint(100 * task_to_apply["percentage"]) / 100
-        if percentage == 0:
-            return img, tar
-        return task_to_apply["function"](img, tar, percentage=percentage)
+        random.shuffle(self.active_tasks)
+        for task_to_apply in self.active_tasks:
+            if np.random.randint(100) > self.neutral:
+                continue
+            percentage = np.random.randint(100 * task_to_apply["percentage"]) / 100
+            if percentage == 0:
+                continue
+            img, tar = task_to_apply["function"](img, tar, percentage=percentage)
+        return img, tar
 
 
 def dummy_function(img, tar, percentage):

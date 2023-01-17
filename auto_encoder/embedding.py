@@ -1,5 +1,5 @@
 import tensorflow as tf
-from tensorflow.keras import layers
+from tensorflow.keras import layers, regularizers
 
 from auto_encoder.essentials import relu_bn, mlp
 
@@ -105,6 +105,20 @@ class Embedding:
         elif self.embedding_type == "direct_avg":
             self.activation = "XX"
             bottleneck = self.add_pooling_op(x, "avg")
+        elif self.embedding_type == "projection_avg":
+            latent = self.add_pooling_op(x, "avg")
+            w_decay = 0.0005
+            latent = layers.Dense(
+                self.embedding_size,
+                use_bias=False,
+                kernel_regularizer=regularizers.l2(w_decay)
+            )(latent)
+            latent = relu_bn(latent)
+            bottleneck = layers.Dense(
+                self.embedding_size,
+                use_bias=False,
+                kernel_regularizer=regularizers.l2(w_decay)
+            )(latent)
         else:
             raise Exception("Unknown Embedding Type - {} -".format(self.embedding_type))
 
@@ -120,6 +134,8 @@ class Embedding:
             bottleneck = layers.Softmax(name="bottleneck_softmax")(bottleneck)
         elif self.activation == "sigmoid":
             bottleneck = layers.Activation("sigmoid", name="bottleneck_sigmoid")(bottleneck)
+        elif self.activation == "none":
+            pass
 
         if self.noise > 0:
             print("[INFO] Gaussian Noise Added.")

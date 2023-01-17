@@ -19,7 +19,6 @@ class Config:
         self.opt = {
             "optimizer": "adam",
             "batch_size": 128,
-            "init_learning_rate": 1e-3,
             "input_shape": [32, 32, 3],
             "tf-version": tf.__version__,
         }
@@ -34,6 +33,7 @@ def main(args_):
     cfg = Config()
     cfg.opt["type"] = args_.type
     cfg.opt["task"] = args_.task
+    cfg.opt["init_learning_rate"] = float(args_.learning_rate)
     cfg.opt["task_difficulty"] = float(args_.task_difficulty)
     cfg.opt["embedding_size"] = int(args_.embedding_size)
     cfg.opt["embedding_type"] = args_.embedding_type
@@ -105,6 +105,7 @@ def parse_args():
         help="Path to directory with dataset",
     )
     parser.add_argument("--model", "-m", help="Path to model")
+    parser.add_argument("--learning_rate", "-lr", default=1e-3, help="Path to model")
     parser.add_argument("--type", "-ty", default="autoencoder", help="Path to model")
     parser.add_argument("--task", "-t", default="reconstruction", help="Path to model")
     parser.add_argument("--task_difficulty", "-difficulty", default=0.0, help="Training Mode")
