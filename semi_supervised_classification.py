@@ -9,6 +9,7 @@ from sklearn.decomposition import PCA
 
 from auto_encoder.data_set import DataSet
 from auto_encoder.auto_encoder import AutoEncoder
+from auto_encoder.barlow_twin_network import BarlowTwinNetwork
 from auto_encoder.simple_siamse_network import SimpleSiameseNetwork
 from auto_encoder.variational_auto_encoder import VariationalAutoEncoder
 
@@ -63,6 +64,9 @@ def get_data_sets(ds_path_train, ds_path_test, model_path, class_mapping, direct
             ae.build(add_decoder=False)
         elif cfg.opt["type"] == "simsiam":
             ae = SimpleSiameseNetwork(model_path, cfg)
+            ae.build(add_decoder=False)
+        elif cfg.opt["type"] == "barlowtwin":
+            ae = BarlowTwinNetwork(model_path, cfg)
             ae.build(add_decoder=False)
         else:
             raise Exception("UNKNOWN TYPE: {}".format(cfg.opt["type"]))
