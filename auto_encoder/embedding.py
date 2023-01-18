@@ -16,8 +16,6 @@ class Embedding:
                  activation,
                  drop_rate,
                  dropout_structure,
-                 noise,
-                 skip,
                  mode="2d"
                  ):
         self.embedding_size = embedding_size
@@ -26,9 +24,6 @@ class Embedding:
 
         self.drop_rate = drop_rate
         self.dropout_structure = dropout_structure
-        self.noise = noise
-
-        self.skip = skip
 
         self.mode = mode
 
@@ -81,9 +76,7 @@ class Embedding:
 
     def build(self, x):
 
-        x_pass = x
-
-        if not self.skip and self.drop_rate > 0.0:
+        if self.drop_rate > 0.0:
             x = self.add_dropout(x, self.drop_rate)
 
         if self.embedding_type == "flatten":
@@ -103,7 +96,7 @@ class Embedding:
             latent = mlp(latent, [2 * self.embedding_size], dropout_rate=0.25)
             bottleneck = create_dense_encoder(latent, self.embedding_size)
         elif self.embedding_type == "direct_avg":
-            self.activation = "XX"
+            self.activation = "none"
             bottleneck = self.add_pooling_op(x, "avg")
         elif self.embedding_type == "projection_avg":
             latent = self.add_pooling_op(x, "avg")
@@ -124,12 +117,12 @@ class Embedding:
 
         if self.activation == "leaky_relu":
             bottleneck = layers.LeakyReLU(name="bottleneck_leaky_relu")(bottleneck)
-            bottleneck = layers.BatchNormalization(name="bottleneck_bn")(bottleneck)
+            bottleneck = layers.LayerNormalization(name="bottleneck_bn")(bottleneck)
         elif self.activation == "relu":
             bottleneck = layers.ReLU(name="bottleneck_relu")(bottleneck)
-            bottleneck = layers.BatchNormalization(name="bottleneck_bn")(bottleneck)
+            bottleneck = layers.LayerNormalization(name="bottleneck_bn")(bottleneck)
         elif self.activation == "linear":
-            bottleneck = layers.BatchNormalization(name="bottleneck_bn")(bottleneck)
+            bottleneck = layers.LayerNormalization(name="bottleneck_bn")(bottleneck)
         elif self.activation == "softmax":
             bottleneck = layers.Softmax(name="bottleneck_softmax")(bottleneck)
         elif self.activation == "sigmoid":
@@ -137,20 +130,7 @@ class Embedding:
         elif self.activation == "none":
             pass
 
-        if self.noise > 0:
-            print("[INFO] Gaussian Noise Added.")
-            bottleneck = layers.GaussianNoise(1.0 * self.noise)(bottleneck)
-
-        if self.skip:
-            print("[INFO] SKIPP CONNECTION ACTIVE")
-            x_pass = self.add_conv_layer(x_pass, self.embedding_size, kernel_size=1)
-            x_pass = relu_bn(x_pass)
-            x_pass = self.add_dropout(x_pass, self.drop_rate)
-            x_pass = layers.Flatten()(x_pass)
-            x_pass = layers.Concatenate()([bottleneck, x_pass])
-            return bottleneck, x_pass
-        else:
-            return bottleneck, bottleneck
+        return bottleneck
 
 
 def transform_to_feature_maps(x, f_map_height, f_map_width, n_features):

@@ -60,42 +60,9 @@ def mlp(x, hidden_units, dropout_rate):
     return x
 
 
-def make_clf_residual_encoder_block(x, filters, ident, downsample=True):
-    f1, f2, f3 = filters
-    y = layers.SeparableConv2D(
-        kernel_size=1,
-        strides=1,
-        filters=f1,
-        padding="same", name="clf_r-down.1-{}".format(ident))(x)
-    y = relu_bn(y, "clf_1.{}".format(ident))
-    y = layers.SeparableConv2D(
-        kernel_size=3,
-        strides=(1 if not downsample else 2),
-        filters=f2,
-        padding="same", name="clf_r-down.2-{}".format(ident))(y)
-    y = relu_bn(y, "clf_2.{}".format(ident))
-    y = layers.SeparableConv2D(
-        kernel_size=1,
-        strides=1,
-        filters=f3,
-        padding="same", name="clf_r-down.3-{}".format(ident))(y)
-
-    if downsample:
-        x = layers.AvgPool2D(pool_size=(2, 2), strides=2)(x)
-        x = layers.SeparableConv2D(
-            kernel_size=1,
-            strides=1,
-            filters=f3,
-            padding="same", name="clf_r-down.pass-{}".format(ident))(x)
-
-    out = layers.Add()([x, y])
-    out = relu_bn(out, "clf_3.{}".format(ident))
-    return out
-
-
 def make_residual_encoder_block(x, filters, ident, downsample=True):
     f1, f2, f3 = filters
-    y = layers.SeparableConv2D(
+    y = layers.Convolution2D(
         kernel_size=1,
         strides=1,
         filters=f1,
@@ -107,7 +74,7 @@ def make_residual_encoder_block(x, filters, ident, downsample=True):
         filters=f2,
         padding="same", name="r-down.2-{}".format(ident))(y)
     y = relu_bn(y)
-    y = layers.SeparableConv2D(
+    y = layers.Convolution2D(
         kernel_size=1,
         strides=1,
         filters=f3,
@@ -115,7 +82,7 @@ def make_residual_encoder_block(x, filters, ident, downsample=True):
 
     if downsample:
         x = layers.AvgPool2D(pool_size=(2, 2), strides=2)(x)
-        x = layers.SeparableConv2D(
+        x = layers.Convolution2D(
             kernel_size=1,
             strides=1,
             filters=f3,
@@ -128,7 +95,7 @@ def make_residual_encoder_block(x, filters, ident, downsample=True):
 
 def make_small_residual_encoder_block(x, filters, ident, downsample=True):
     f1, f2 = filters
-    y = layers.Convolution2D(
+    y = layers.SeparableConv2D(
         kernel_size=3,
         strides=(1 if not downsample else 2),
         filters=f1,
@@ -141,7 +108,7 @@ def make_small_residual_encoder_block(x, filters, ident, downsample=True):
         padding="same", name="r-down.3-{}".format(ident))(y)
 
     if downsample:
-        x = layers.Convolution2D(
+        x = layers.SeparableConv2D(
             kernel_size=1,
             strides=2,
             filters=f2,

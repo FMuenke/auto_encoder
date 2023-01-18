@@ -78,9 +78,7 @@ def mlp_auto_encoder(
         resolution,
         drop_rate,
         dropout_structure,
-        noise,
         asymmetrical,
-        skip,
         num_patches_p_side=8,
         positional_encoding=False,
 ):
@@ -116,18 +114,17 @@ def mlp_auto_encoder(
         activation=embedding_activation,
         drop_rate=drop_rate,
         dropout_structure=dropout_structure,
-        noise=noise,
-        skip=skip,
         mode="1d"
     )
-    bottleneck, x = emb.build(representation)
+    bottleneck = emb.build(representation)
+    x = bottleneck
 
     if asymmetrical:
-        reshape_layer_dim = input_shape[0] / (2 ** depth)
+        reshape_layer_dim = input_shape[0] / (2 ** depth) / 2
         assert reshape_layer_dim in [2 ** x for x in [0, 1, 2, 3, 4, 5, 6]]
         x = transform_to_feature_maps(x, int(reshape_layer_dim), int(reshape_layer_dim), embedding_size)
         x = make_decoder_stack(x, depth, resolution=1)
-        output = layers.Conv2DTranspose(3, 3, 1, padding='same', activation='linear', name='conv_transpose_final')(x)
+        output = layers.Conv2DTranspose(3, 3, 2, padding='same', activation='linear', name='conv_transpose_final')(x)
     else:
         decoder_blocks = keras.Sequential(
             [MLPMixerLayer(num_patches, embedding_dim, model_dropout_rate) for _ in range(depth)]

@@ -1,12 +1,14 @@
 import numpy as np
 import os
 import pickle
+import tensorflow as tf
 from tensorflow import keras
-from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping, CSVLogger
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, CSVLogger
 
 from auto_encoder.simple_siamese_data_generator import DataGenerator
 from auto_encoder.auto_encoder import AutoEncoder
-from auto_encoder.residual import make_residual_simple_siamese
+from auto_encoder.residual import residual_simple_siamese
+from auto_encoder.resnet import resnet_encoder
 from auto_encoder.simple_siamese_network_engine import SimSiamEngine
 
 from auto_encoder.util import check_n_make_dir, prepare_input
@@ -17,9 +19,15 @@ class SimpleSiameseNetwork(AutoEncoder):
         super(SimpleSiameseNetwork, self).__init__(model_folder, cfg)
         self.metric_to_track = "loss"
 
+        epochs = 5
+        self.batch_size = 512
+        steps = epochs * (50000 // self.batch_size)
+        lr_decayed_fn = tf.keras.experimental.CosineDecay(initial_learning_rate=0.003, decay_steps=steps)
+        self.optimizer = keras.optimizers.SGD(lr_decayed_fn, momentum=0.6)
+
     def get_backbone(self):
         if self.backbone in ["resnet", "residual"]:
-            encoder, decoder = make_residual_simple_siamese(
+            encoder, decoder = residual_simple_siamese(
                 input_shape=self.input_shape,
                 embedding_size=self.embedding_size,
                 embedding_type=self.embedding_type,
@@ -27,9 +35,28 @@ class SimpleSiameseNetwork(AutoEncoder):
                 depth=self.depth,
                 scale=self.scale,
                 resolution=self.resolution,
-                noise=0,
-                drop_rate=0.0,
-                dropout_structure="general"
+                drop_rate=self.drop_rate,
+                dropout_structure=self.dropout_structure
+            )
+        elif self.backbone == "resnet18":
+            encoder, decoder = resnet_encoder(
+                input_shape=self.input_shape,
+                embedding_size=self.embedding_size,
+                embedding_type=self.embedding_type,
+                embedding_activation=self.embedding_activation,
+                n_blocks=18,
+                drop_rate=self.drop_rate,
+                dropout_structure=self.dropout_structure
+            )
+        elif self.backbone == "resnet2":
+            encoder, decoder = resnet_encoder(
+                input_shape=self.input_shape,
+                embedding_size=self.embedding_size,
+                embedding_type=self.embedding_type,
+                embedding_activation=self.embedding_activation,
+                n_blocks=2,
+                drop_rate=self.drop_rate,
+                dropout_structure=self.dropout_structure
             )
         else:
             raise ValueError("{} Backbone was not recognised".format(self.backbone))
@@ -84,13 +111,11 @@ class SimpleSiameseNetwork(AutoEncoder):
             save_weights_only=True
         )
 
-        patience = 5
-        reduce_lr = ReduceLROnPlateau(monitor=self.metric_to_track, verbose=1, patience=int(patience*0.5))
-        # reduce_lr = CosineDecayRestarts(initial_learning_rate=self.init_learning_rate, first_decay_steps=1000)
+        patience = 128
         early_stop = EarlyStopping(monitor=self.metric_to_track, patience=patience, verbose=1)
         csv_logger = CSVLogger(filename=os.path.join(self.model_folder, "logs.csv"))
 
-        callback_list = [checkpoint, reduce_lr, early_stop, csv_logger]
+        callback_list = [checkpoint, early_stop, csv_logger]
 
         print("[INFO] Training started. Results: {}".format(self.model_folder))
         history = self.model.fit(

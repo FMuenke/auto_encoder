@@ -33,6 +33,8 @@ def load_data_set(model, path_to_data, class_mapping):
     data_y = []
     for i in tqdm(images):
         cls = i.load_y()
+        if cls not in class_mapping:
+            continue
         data_y.append(class_mapping[cls])
         data = i.load_x()
         pred = model.encode(data)
@@ -75,12 +77,13 @@ def get_data_sets(ds_path_train, ds_path_test, model_path, class_mapping, direct
         ae.build(add_decoder=False)
 
     x_train, y_train = load_data_set(ae, ds_path_train, class_mapping)
-    np.save(os.path.join(model_path, "x_train{}.npy".format(ds_ident)), x_train)
-    np.save(os.path.join(model_path, "y_train{}.npy".format(ds_ident)), y_train)
+    # np.save(os.path.join(model_path, "x_train{}.npy".format(ds_ident)), x_train)
+    # np.save(os.path.join(model_path, "y_train{}.npy".format(ds_ident)), y_train)
 
     x_test, y_test = load_data_set(ae, ds_path_test, class_mapping)
-    np.save(os.path.join(model_path, "x_test{}.npy".format(ds_ident)), x_test)
-    np.save(os.path.join(model_path, "y_test{}.npy".format(ds_ident)), y_test)
+    # np.save(os.path.join(model_path, "x_test{}.npy".format(ds_ident)), x_test)
+    # np.save(os.path.join(model_path, "y_test{}.npy".format(ds_ident)), y_test)
+    return x_train, y_train, x_test, y_test
 
 
 def vis_embeddings(x_train, y_train, x_test, y_test, path):
@@ -120,20 +123,19 @@ def main(args_):
     model_path = args_.model
     direct_features = bool(args_.direct_features)
 
-    if direct_features:
-        ds_ident = "_DIRECT"
-    else:
-        ds_ident = ""
     class_mapping = load_dict(os.path.join(df, "class_mapping.json"))
 
-    if not os.path.isfile(os.path.join(model_path, "y_test{}.npy".format(ds_ident))):
-        get_data_sets(os.path.join(df, "train"), os.path.join(df, "test"), model_path, class_mapping, direct_features)
+    x_train, y_train, x_test, y_test = get_data_sets(
+        os.path.join(df, "train"),
+        os.path.join(df, "test"),
+        model_path, class_mapping, direct_features
+    )
 
-    x_train = np.load(os.path.join(model_path, "x_train{}.npy".format(ds_ident)))
-    y_train = np.load(os.path.join(model_path, "y_train{}.npy".format(ds_ident)))
+    # x_train = np.load(os.path.join(model_path, "x_train{}.npy".format(ds_ident)))
+    # y_train = np.load(os.path.join(model_path, "y_train{}.npy".format(ds_ident)))
 
-    x_test = np.load(os.path.join(model_path, "x_test{}.npy".format(ds_ident)))
-    y_test = np.load(os.path.join(model_path, "y_test{}.npy".format(ds_ident)))
+    # x_test = np.load(os.path.join(model_path, "x_test{}.npy".format(ds_ident)))
+    # y_test = np.load(os.path.join(model_path, "y_test{}.npy".format(ds_ident)))
 
     vis_embeddings(x_train, y_train, x_test, y_test, model_path)
 

@@ -216,40 +216,6 @@ def apply_mask(img, lab, percentage):
     return img, lab
 
 
-def gaus2d(x=0, y=0, mx=0, my=0, sx=1, sy=1):
-    return 1. / (2. * np.pi * sx * sy) * np.exp(-((x - mx)**2. / (2. * sx**2.) + (y - my)**2. / (2. * sy**2.)))
-
-
-def norm(data):
-    min_mat = np.min(data)
-    max_mat = np.max(data)
-    return (data - min_mat) / (max_mat - min_mat)
-
-
-def apply_blackhole_mask(img, lab, percentage):
-    height, width, ch = img.shape
-    # Recalculate percentage to cover defined percentage of image
-    percentage = np.sqrt(100 * 100 * percentage) / 100
-
-    x = np.linspace(0, width, width)
-    y = np.linspace(0, height, height)
-    mx = np.random.randint(width)
-    my = np.random.randint(height)
-    sx = int(percentage * width)
-    sy = int(percentage * height)
-    x, y = np.meshgrid(x, y)  # get 2D variables instead of 1D
-    g_m = gaus2d(x, y, mx, my, sx, sy)
-    g_m = np.expand_dims(g_m, axis=2)
-    g_m = np.concatenate([g_m, g_m, g_m], axis=2)
-
-    g_m = np.clip(norm(g_m) * 1.5, 0, 1)
-    g_m = np.ones(g_m.shape) - g_m
-    img = img * g_m
-
-    # img[y1_img:y1_img + mask_height, x1_img:x1_img + mask_width, :] = masked_area
-    return img, lab
-
-
 def apply_cross_cut(img, lab, percentage):
     height, width, ch = img.shape
     # Recalculate percentage to cover defined percentage of image
@@ -362,29 +328,6 @@ def apply_imagine_patches(img, lab, n_patches=8, percentage=0.25):
     return img, lab
 
 
-def apply_patch_shuffling_v2(img, lab, percentage=0.25):
-    height, width, ch = img.shape
-    n_patches = np.random.choice([4, 8, 16, 32])
-    size = 128
-    img = cv2.resize(img, (size, size), interpolation=cv2.INTER_CUBIC)
-    patches = img_to_patches(img, int(size / n_patches))
-
-    patch_selected = np.arange(len(patches))
-    patch_selected = np.random.choice(patch_selected, int(percentage * len(patches)), replace=False)
-    patch_shuffled = np.copy(patch_selected)
-    np.random.shuffle(patch_shuffled)
-
-    patch_mapping = {i: j for i, j in zip(patch_selected, patch_shuffled)}
-
-    for p_i, patch in enumerate(patches):
-        if p_i in patch_selected:
-            patch = patches[patch_mapping[p_i]]
-        patches[p_i] = patch
-    img = patches_to_img(patches, size)
-    img = cv2.resize(img, (width, height), interpolation=cv2.INTER_CUBIC)
-    return img, lab
-
-
 class Augmentations:
     def __init__(self,
                  neutral_percentage=0.5,
@@ -447,7 +390,6 @@ class EncoderTask:
                  black_hole=0.0,
                  blurring=0.0,
                  noise=0.0,
-                 imagine_mask=0.0,
                  imagine_patches=0.0,
                  ):
 
@@ -489,10 +431,6 @@ def tests():
     img = cv2.imread("./test_image/test_traffic_sign.png")
     img, _ = apply_patch_shuffling(img, img)
     cv2.imwrite("./test_image/test_traffic_sign_patch_shuffle.png", img)
-
-    img = cv2.imread("./test_image/test_traffic_sign.png")
-    img, _ = apply_blackhole_mask(img, img, percentage=0.25)
-    cv2.imwrite("./test_image/test_traffic_sign_masked_clackhole.png", img)
 
     img = cv2.imread("./test_image/test_traffic_sign.png")
     img, _ = apply_blur(img, img, percentage=0.75)

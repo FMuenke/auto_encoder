@@ -81,6 +81,7 @@ def eval_classifier(clf, clf_id, x_train, y_train, x_test, y_test):
     y_pred = clf.predict(x_test)
     f1 = f1_score(y_test, y_pred, average="weighted")
     acc = accuracy_score(y_test, y_pred)
+    # acc_5 = top_k_accuracy_score(y_test, y_pred, k=5)
     return f1, acc
 
 
@@ -114,24 +115,11 @@ def select_random_subset_by_class(x_train, y_train, n_labels):
 
 def cls_test_run(x_train, y_train, x_test, y_test, n_labels, run_id):
     clf_list = [
-        # [RandomForestClassifier(n_jobs=-1, n_estimators=2500), "RANDOM FORREST (2500) CLASSIFIER"],
-        # [get_random_forrest_optimizer(n_labels), "RF-OPT"],
         [LogisticRegression(max_iter=10000, n_jobs=-1), "LR"],
-        # [MLPClassifier(hidden_layer_sizes=(2048, 1024, 512), max_iter=10000), "MLP (2048, 1024, 512) CLASSIFIER"],
-        # [MLPClassifier(hidden_layer_sizes=(1024, 512, 256), max_iter=10000), "MLP (1024, 512, 256) CLASSIFIER"],
-        # [MLPClassifier(hidden_layer_sizes=(512, 256, 128), max_iter=10000), "MLP (512, 256, 128) CLASSIFIER"],
-        # [MLPClassifier(hidden_layer_sizes=(256, 128, 64), max_iter=10000), "MLP (256, 128, 64) CLASSIFIER"],
-        # [MLPClassifier(hidden_layer_sizes=(256, 128,), max_iter=10000), "MLP (256, 128) CLASSIFIER"],
-        # [TfMlp(x_train.shape[1], 100, [512, 256, 128]), "TF-MLP (512, 256, 128)"],
-        # [TfMlp(x_train.shape[1], 100, [1024, 512, 256]), "TF-MLP (1024, 512, 256)"],
-        # [TfMlp(x_train.shape[1], 100, [2048, 1024], dropout_rate=0.50), "TF-MLP (2048, 1024) drp=0.50"],
-        [TfMlp(x_train.shape[1], 100, [2048, 1024], dropout_rate=0.75), "TF-MLP (2048, 1024) drp=0.75"],
-        # [TfMlp(x_train.shape[1], 100, [2048, 128]), "TF-MLP (2048, 128)"],
-        # [LogisticRegressionCV(cv=2, max_iter=100000, n_jobs=-1), "LR CV"],
-        # [ensemble.ExtraTreesClassifier(n_estimators=2500), "EXT (2500)"],
+        [TfMlp(x_train.shape[1], 100, [512, 256], dropout_rate=0.75), "TF-MLP (512, 256) drp=0.75"],
+        [TfMlp(x_train.shape[1], 100, [1024], dropout_rate=0.75), "TF-MLP (1024) drp=0.75"],
         [neighbors.NearestCentroid(), "NC"],
-        # [svm.SVC(max_iter=10000), "SVC"],
-        # [GaussianProcessClassifier((1.0 * kernels.RBF(1.0)), n_jobs=-1), "GAUSSIAN PROCESS"],
+        [neighbors.KNeighborsClassifier(), "KNN"]
     ]
 
     data_frame = []
@@ -152,7 +140,7 @@ def cls_test_run(x_train, y_train, x_test, y_test, n_labels, run_id):
 def eval_semi_supervised_classification(x_train, y_train, x_test, y_test, save_path, direct_features):
     data_frame = []
 
-    for n_labels in [400, 2500, 4000, 10000]:
+    for n_labels in [65*4, 65*8, 65*20, 65*40]:
         for i in range(1):
             data_frame_p = cls_test_run(x_train, y_train, x_test, y_test, n_labels, i)
             data_frame.append(data_frame_p)

@@ -1,7 +1,7 @@
 #!/bin/sh
 
-model="../AE.PATCH/"
-data="../cifar-100"
+model="../AE.PATCH"
+data="../TS-DATA-GROUPED"
 
 
 for DROP in 0.10 0.25 0.50 0.75 0.90 0.95

@@ -1,7 +1,7 @@
 #!/bin/sh
 
-model="../AE.1/"
-data="../cifar-100"
+model="../AE.1"
+data="../TS-DATA-GROUPED"
 
 
 

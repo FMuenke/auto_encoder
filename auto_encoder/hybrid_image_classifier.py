@@ -43,7 +43,7 @@ class HybridImageClassifier(AutoEncoder):
         x_input, bottleneck, output = self.get_backbone()
 
         classification = add_classification_head(
-            bottleneck, n_classes=len(self.class_mapping), hidden_units=[], dropout_rate=0.0)
+            bottleneck, n_classes=len(self.class_mapping), hidden_units=[512, 256], dropout_rate=0.75)
 
         self.model = Model(inputs=x_input, outputs=[classification, output])
         self.load()
@@ -57,21 +57,6 @@ class HybridImageClassifier(AutoEncoder):
                     "clf_final": keras.metrics.CategoricalAccuracy(name="accuracy")
                 },
                 optimizer=self.optimizer)
-
-    def load(self):
-        model_path = None
-        if os.path.isfile(os.path.join(self.model_folder, "weights-final.hdf5")):
-            model_path = os.path.join(self.model_folder, "weights-final.hdf5")
-        elif os.path.isdir(self.model_folder):
-            pot_models = sorted(os.listdir(self.model_folder))
-            for model in pot_models:
-                if model.lower().endswith((".hdf5", ".h5")):
-                    model_path = os.path.join(self.model_folder, model)
-        if model_path is not None:
-            print("[INFO] Model-Weights are loaded from: {}".format(model_path))
-            self.model.load_weights(model_path, by_name=True)
-        else:
-            print("[INFO] No Weights were found")
 
     def fit(self, tag_set_train, tag_set_test, augmentations):
         print("[INFO] Training with {} / Testing with {}".format(len(tag_set_train), len(tag_set_test)))
@@ -109,7 +94,6 @@ class HybridImageClassifier(AutoEncoder):
 
         patience = 32
         reduce_lr = ReduceLROnPlateau(monitor=self.metric_to_track, verbose=1, patience=int(patience*0.5))
-        # reduce_lr = CosineDecayRestarts(initial_learning_rate=self.init_learning_rate, first_decay_steps=1000)
         early_stop = EarlyStopping(monitor=self.metric_to_track, patience=patience, verbose=1)
         csv_logger = CSVLogger(filename=os.path.join(self.model_folder, "logs.csv"))
 

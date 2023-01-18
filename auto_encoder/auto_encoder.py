@@ -8,11 +8,9 @@ from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, Early
 
 
 from auto_encoder.residual import residual_auto_encoder, patchify_residual_auto_encoder
-from auto_encoder.conv_next import convnext_auto_encoder
 from auto_encoder.linear import linear_auto_encoder
 from auto_encoder.mlp import mlp_auto_encoder
 from auto_encoder.vision_transformer import vit_auto_encoder
-from auto_encoder.still import still_auto_encoder
 from auto_encoder.small_residual import small_residual_auto_encoder
 from auto_encoder.data_generator import DataGenerator
 
@@ -54,8 +52,6 @@ class AutoEncoder:
         self.drop_rate = cfg.opt["drop_rate"]
         self.dropout_structure = cfg.opt["dropout_structure"]
         self.asymmetrical = cfg.opt["asymmetrical"]
-        self.skip_connection = cfg.opt["skip"]
-        self.embedding_noise = cfg.opt["embedding_noise"]
 
         self.model = None
 
@@ -101,11 +97,22 @@ class AutoEncoder:
                 resolution=self.resolution,
                 drop_rate=self.drop_rate,
                 dropout_structure=self.dropout_structure,
-                noise=self.embedding_noise,
-                skip=self.skip_connection,
-                asymmetrical=self.asymmetrical,
+                asymmetrical=self.asymmetrical, use_stem=False,
             )
-        elif self.backbone in ["patch-resnet", "patch-residual"]:
+        elif self.backbone in ["stem-resnet", "stem-residual"]:
+            x_input, bottleneck, output = residual_auto_encoder(
+                input_shape=self.input_shape,
+                embedding_size=self.embedding_size,
+                embedding_type=self.embedding_type,
+                embedding_activation=self.embedding_activation,
+                depth=self.depth,
+                scale=self.scale,
+                resolution=self.resolution,
+                drop_rate=self.drop_rate,
+                dropout_structure=self.dropout_structure,
+                asymmetrical=self.asymmetrical, use_stem=True,
+            )
+        elif self.backbone in ["patch-4-resnet", "patch-4-residual"]:
             x_input, bottleneck, output = patchify_residual_auto_encoder(
                 input_shape=self.input_shape,
                 embedding_size=self.embedding_size,
@@ -116,8 +123,6 @@ class AutoEncoder:
                 resolution=self.resolution,
                 drop_rate=self.drop_rate,
                 dropout_structure=self.dropout_structure,
-                noise=self.embedding_noise,
-                skip=self.skip_connection,
                 asymmetrical=self.asymmetrical, patch_size=4,
             )
         elif self.backbone in ["patch-2-resnet", "patch-2-residual"]:
@@ -131,8 +136,6 @@ class AutoEncoder:
                 resolution=self.resolution,
                 drop_rate=self.drop_rate,
                 dropout_structure=self.dropout_structure,
-                noise=self.embedding_noise,
-                skip=self.skip_connection,
                 asymmetrical=self.asymmetrical, patch_size=2
             )
         elif self.backbone in ["small_resnet", "small_residual"]:
@@ -146,23 +149,6 @@ class AutoEncoder:
                 resolution=self.resolution,
                 drop_rate=self.drop_rate,
                 dropout_structure=self.dropout_structure,
-                noise=self.embedding_noise,
-                skip=self.skip_connection,
-                asymmetrical=self.asymmetrical,
-            )
-        elif self.backbone in ["convnext"]:
-            x_input, bottleneck, output = convnext_auto_encoder(
-                input_shape=self.input_shape,
-                embedding_size=self.embedding_size,
-                embedding_type=self.embedding_type,
-                embedding_activation=self.embedding_activation,
-                depth=self.depth,
-                scale=self.scale,
-                resolution=self.resolution,
-                drop_rate=self.drop_rate,
-                dropout_structure=self.dropout_structure,
-                noise=self.embedding_noise,
-                skip=self.skip_connection,
                 asymmetrical=self.asymmetrical,
             )
         elif self.backbone in ["linear", "lin"]:
@@ -175,37 +161,7 @@ class AutoEncoder:
                 resolution=self.resolution,
                 drop_rate=self.drop_rate,
                 dropout_structure=self.dropout_structure,
-                noise=self.embedding_noise,
-                skip=self.skip_connection,
                 asymmetrical=self.asymmetrical
-            )
-        elif self.backbone in ["still"]:
-            x_input, bottleneck, output = still_auto_encoder(
-                input_shape=self.input_shape,
-                embedding_size=self.embedding_size,
-                embedding_type=self.embedding_type,
-                embedding_activation=self.embedding_activation,
-                depth=self.depth,
-                resolution=self.resolution,
-                drop_rate=self.drop_rate,
-                dropout_structure=self.dropout_structure,
-                noise=self.embedding_noise,
-                skip=self.skip_connection,
-                asymmetrical=self.asymmetrical
-            )
-        elif self.backbone in ["still-2"]:
-            x_input, bottleneck, output = still_auto_encoder(
-                input_shape=self.input_shape,
-                embedding_size=self.embedding_size,
-                embedding_type=self.embedding_type,
-                embedding_activation=self.embedding_activation,
-                depth=self.depth,
-                resolution=self.resolution,
-                drop_rate=self.drop_rate,
-                dropout_structure=self.dropout_structure,
-                noise=self.embedding_noise,
-                skip=self.skip_connection,
-                asymmetrical=self.asymmetrical, patch_size=2
             )
         elif self.backbone in ["mlp"]:
             x_input, bottleneck, output = mlp_auto_encoder(
@@ -217,9 +173,7 @@ class AutoEncoder:
                 resolution=self.resolution,
                 drop_rate=self.drop_rate,
                 dropout_structure=self.dropout_structure,
-                noise=self.embedding_noise,
                 asymmetrical=self.asymmetrical,
-                skip=self.skip_connection,
             )
         elif self.backbone in ["vision_transformer", "vit"]:
             x_input, bottleneck, output = vit_auto_encoder(
@@ -231,9 +185,7 @@ class AutoEncoder:
                 resolution=self.resolution,
                 drop_rate=self.drop_rate,
                 dropout_structure=self.dropout_structure,
-                noise=self.embedding_noise,
                 asymmetrical=self.asymmetrical,
-                skip=self.skip_connection,
             )
         else:
             raise ValueError("{} Backbone was not recognised".format(self.backbone))

@@ -25,7 +25,7 @@ def make_decoder_stack(feature_map_after_bottleneck, depth, resolution):
     x = feature_map_after_bottleneck
     for i in range(depth):
         x = layers.UpSampling2D()(x)
-        x = layers.Conv2DTranspose(
+        x = layers.Convolution2D(
             kernel_size=3,
             strides=1,
             filters=16 * 2**(depth - i - 1) * resolution,
@@ -43,8 +43,6 @@ def linear_auto_encoder(
         resolution,
         drop_rate,
         dropout_structure,
-        noise,
-        skip,
         asymmetrical,
 ):
     input_sizes = {512: 0, 256: 0, 128: 0, 64: 0, 32: 0, }
@@ -59,13 +57,12 @@ def linear_auto_encoder(
         activation=embedding_activation,
         drop_rate=drop_rate,
         dropout_structure=dropout_structure,
-        noise=noise,
-        skip=skip
     )
 
-    bottleneck, x = emb.build(x)
+    bottleneck = emb.build(x)
+    x = bottleneck
 
-    reshape_layer_dim = input_shape[0] / (2 ** depth)
+    reshape_layer_dim = input_shape[0] / (2 ** depth) / 2
     assert reshape_layer_dim in [2 ** count for count in [0, 1, 2, 3, 4, 5, 6]]
 
     if asymmetrical:
@@ -75,7 +72,7 @@ def linear_auto_encoder(
         x = transform_to_feature_maps(x, reshape_layer_dim, reshape_layer_dim, embedding_size)
         x = make_decoder_stack(x, depth, resolution)
 
-    output = layers.Conv2DTranspose(3, 3, 1, padding='same', activation='linear', name='conv_transpose_5')(x)
+    output = layers.Conv2DTranspose(3, 3, 2, padding='same', activation='linear', name='conv_transpose_5')(x)
     return input_layer, bottleneck, output
 
 
@@ -111,13 +108,13 @@ def linear_variational_auto_encoder(
 
     latent_inputs = keras.Input(shape=(embedding_size,))
 
-    reshape_layer_dim = input_shape[0] / (2 ** depth)
+    reshape_layer_dim = input_shape[0] / (2 ** depth) / 2
     assert reshape_layer_dim in [2 ** x for x in [0, 1, 2, 3, 4, 5, 6]]
 
     x = transform_to_feature_maps(latent_inputs, reshape_layer_dim, reshape_layer_dim, embedding_size)
     x = make_decoder_stack(x, depth, resolution)
 
-    output = layers.Conv2DTranspose(3, 3, 1, padding='same', activation='linear', name='conv_transpose_5')(x)
+    output = layers.Conv2DTranspose(3, 3, 2, padding='same', activation='linear', name='conv_transpose_5')(x)
     decoder = keras.Model(latent_inputs, output, name="decoder")
 
     return encoder, decoder

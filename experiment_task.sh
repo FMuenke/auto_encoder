@@ -1,10 +1,9 @@
 #!/bin/sh
 
-model="../AE.TASK/"
-data="../cifar-100"
+model="../AE.TASK"
+data="../TS-DATA-GROUPED"
 
-# completion_cross_cut denoise completion_masking reconstruction_shuffled reconstruction_rotated warp
-for TASK in imagine_patches imagine_mask
+for TASK in patches_masked imagine_mask cross_cut noise masking patches_shuffled patches_rotated warp
 do
   for TDIFF in 0.10 0.25 0.50 0.75 0.90
   do
@@ -20,7 +19,7 @@ do
 done
 
 
-for TASK in imagine_patches imagine_mask
+for TASK in patches_masked imagine_mask cross_cut noise masking patches_shuffled patches_rotated warp
 do
   for TDIFF in 0.10 0.25 0.50 0.75 0.90
   do

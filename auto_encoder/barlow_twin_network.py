@@ -5,9 +5,9 @@ from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, Early
 
 from auto_encoder.auto_encoder import AutoEncoder
 
-from auto_encoder.residual import make_residual_simple_siamese
+from auto_encoder.residual import residual_simple_siamese
 from auto_encoder.barlow_twin_network_engine import BarlowTwin, BarlowLoss
-from auto_encoder.simple_siamese_data_generator import DataGenerator
+from auto_encoder.barlow_twin_data_generator import DataGenerator
 
 from auto_encoder.util import check_n_make_dir, prepare_input
 
@@ -19,7 +19,7 @@ class BarlowTwinNetwork(AutoEncoder):
 
     def get_backbone(self):
         if self.backbone in ["resnet", "residual"]:
-            encoder, decoder = make_residual_simple_siamese(
+            encoder, decoder = residual_simple_siamese(
                 input_shape=self.input_shape,
                 embedding_size=self.embedding_size,
                 embedding_type=self.embedding_type,
@@ -27,7 +27,6 @@ class BarlowTwinNetwork(AutoEncoder):
                 depth=self.depth,
                 scale=self.scale,
                 resolution=self.resolution,
-                noise=self.embedding_noise,
                 drop_rate=self.drop_rate,
                 dropout_structure=self.dropout_structure
             )

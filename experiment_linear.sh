@@ -1,10 +1,10 @@
 #!/bin/sh
 
-model="../AE.1/"
-data="../cifar-100"
+model="../AE.1"
+data="../TS-DATA-GROUPED"
 
 
-for ETYPE in flatten glob_avg glob_max
+for ETYPE in glob_avg
 do
   for R in 8 16 32
   do
@@ -15,7 +15,7 @@ do
       then
         echo "Directory $current_model_folder"
       else
-        python train_ae.py -df $data/train --model $current_model_folder -bb linear --resolution $R -type $ETYPE -size $EMB
+        python train_ae.py -df $data/train --model $current_model_folder -bb linear -r $R -etype $ETYPE -esize $EMB
         python semi_supervised_classification.py -df $data --model $current_model_folder
       fi
 
@@ -24,7 +24,7 @@ do
       then
         echo "Directory $current_model_folder"
       else
-        python train_ae.py -df $data/train --model $current_model_folder -bb linear  --resolution $R -type $ETYPE -size $EMB -asym True
+        python train_ae.py -df $data/train --model $current_model_folder -bb linear  -r $R -etype $ETYPE -esize $EMB -asym True
         python semi_supervised_classification.py -df $data --model $current_model_folder
       fi
     done

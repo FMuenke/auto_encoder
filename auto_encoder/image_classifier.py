@@ -5,12 +5,10 @@ from tensorflow.keras import optimizers
 from tensorflow.keras import layers
 
 import pickle
-from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping, CSVLogger
 
 
-from auto_encoder.residual import residual_classifier, residual_classifier_wo_embedding, residual_classifier_wo_extra_block
-from auto_encoder.conv_next import conv_next_classifier_wo_embedding
+from auto_encoder.residual import residual_classifier
 from auto_encoder.linear import linear_auto_encoder
 from auto_encoder.vision_transformer import vit_auto_encoder
 from auto_encoder.data_generator import ClassificationDataGenerator
@@ -80,43 +78,6 @@ class ImageClassifier:
                 resolution=self.resolution,
                 drop_rate=self.drop_rate,
                 dropout_structure=self.dropout_structure,
-                noise=self.embedding_noise,
-                n_classes=len(self.class_mapping),
-            )
-        elif self.backbone in ["d-residual"]:
-            x_in, output = residual_classifier_wo_embedding(
-                input_shape=self.input_shape,
-                depth=self.depth,
-                resolution=self.resolution,
-                scale=self.scale,
-                drop_rate=self.drop_rate,
-                dropout_structure=self.dropout_structure,
-                noise=self.embedding_noise,
-                n_classes=len(self.class_mapping),
-            )
-        elif self.backbone in ["b-residual"]:
-            x_in, output = residual_classifier_wo_extra_block(
-                input_shape=self.input_shape,
-                embedding_size=self.embedding_size,
-                embedding_type=self.embedding_type,
-                embedding_activation=self.embedding_activation,
-                depth=self.depth,
-                scale=self.scale,
-                resolution=self.resolution,
-                drop_rate=self.drop_rate,
-                dropout_structure=self.dropout_structure,
-                noise=self.embedding_noise,
-                n_classes=len(self.class_mapping),
-            )
-        elif self.backbone in ["d-conv-next"]:
-            x_in, output = conv_next_classifier_wo_embedding(
-                input_shape=self.input_shape,
-                depth=self.depth,
-                resolution=self.resolution,
-                scale=self.scale,
-                drop_rate=self.drop_rate,
-                dropout_structure=self.dropout_structure,
-                noise=self.embedding_noise,
                 n_classes=len(self.class_mapping),
             )
         elif self.backbone in ["xception"]:

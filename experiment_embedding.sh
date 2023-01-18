@@ -1,7 +1,7 @@
 #!/bin/sh
 
-model="../AE.1/"
-data="../cifar-100"
+model="../AE.1"
+data="../TS-DATA-GROUPED"
 
 
 
@@ -14,7 +14,7 @@ do
     then
       echo "Directory $current_model_folder"
     else
-      python train_ae.py -df $data/train --model $current_model_folder -bb residual -type $ETYPE --embedding_activation $EACT
+      python train_ae.py -df $data/train --model $current_model_folder -bb residual -etype $ETYPE -eact $EACT
       python semi_supervised_classification.py -df $data --model $current_model_folder
     fi
   done

@@ -70,9 +70,7 @@ def vit_auto_encoder(
         resolution,
         drop_rate,
         dropout_structure,
-        noise,
         asymmetrical,
-        skip,
 ):
     num_patches_p_side = 4
     num_patches = num_patches_p_side**2
@@ -109,11 +107,10 @@ def vit_auto_encoder(
         activation=embedding_activation,
         drop_rate=drop_rate,
         dropout_structure=dropout_structure,
-        noise=noise,
-        skip=skip,
         mode="1d"
     )
-    bottleneck, x = emb.build(representation)
+    bottleneck = emb.build(representation)
+    x = bottleneck
 
     if asymmetrical:
         reshape_layer_dim = input_shape[0] / (2 ** depth)

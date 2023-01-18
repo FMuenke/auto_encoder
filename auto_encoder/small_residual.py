@@ -46,8 +46,6 @@ def small_residual_auto_encoder(
         resolution,
         drop_rate,
         dropout_structure,
-        noise,
-        skip,
         asymmetrical
 ):
     input_sizes = {512: 0, 256: 0, 128: 0, 64: 0, 32: 0, }
@@ -63,12 +61,11 @@ def small_residual_auto_encoder(
         activation=embedding_activation,
         drop_rate=drop_rate,
         dropout_structure=dropout_structure,
-        noise=noise,
-        skip=skip,
     )
-    bottleneck, x = emb.build(x)
+    bottleneck = emb.build(x)
+    x = bottleneck
 
-    reshape_layer_dim = input_shape[0] / (2 ** depth)
+    reshape_layer_dim = input_shape[0] / (2 ** depth) / 2
     assert reshape_layer_dim in [2 ** count for count in [0, 1, 2, 3, 4, 5, 6]]
 
     if asymmetrical:
@@ -78,5 +75,5 @@ def small_residual_auto_encoder(
         x = transform_to_feature_maps(x, reshape_layer_dim, reshape_layer_dim, embedding_size)
         x = make_decoder_stack(x, depth, resolution, scale=scale)
 
-    output = layers.Conv2DTranspose(3, 3, 1, padding='same', activation='linear', name='conv_transpose_5')(x)
+    output = layers.Conv2DTranspose(3, 3, 2, padding='same', activation='linear', name='conv_transpose_5')(x)
     return input_layer, bottleneck, output

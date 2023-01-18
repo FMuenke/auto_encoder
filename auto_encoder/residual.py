@@ -4,8 +4,8 @@ from tensorflow.keras import layers
 from auto_encoder.embedding import Embedding, transform_to_feature_maps
 from auto_encoder.sampling_layer import Sampling
 
-from auto_encoder.essentials import make_residual_encoder_block, make_clf_residual_encoder_block
-from auto_encoder.essentials import add_classification_head, make_residual_decoder_block, relu_bn, add_dropout_2d
+from auto_encoder.essentials import make_residual_encoder_block, make_residual_decoder_block
+from auto_encoder.essentials import add_classification_head, relu_bn, add_dropout_2d
 
 
 def make_encoder_stack(input_layer, depth, resolution, scale=0):
@@ -23,7 +23,22 @@ def make_encoder_stack(input_layer, depth, resolution, scale=0):
     return x
 
 
-def make_residual_simple_siamese(
+def make_decoder_stack(feature_map_after_bottleneck, depth, resolution, scale=0):
+    x = feature_map_after_bottleneck
+    for i in range(depth):
+        filters = [
+            16 * 2**(depth - i - 1) * resolution,
+            8 * 2**(depth - i - 1) * resolution,
+            8 * 2**(depth - i - 1) * resolution,
+        ]
+        x = make_residual_decoder_block(x, filters, ident=i + 1)
+        if scale > 0:
+            for scale in range(scale):
+                x = make_residual_decoder_block(x, filters, ident="{}-ident-{}".format(i + 1, scale), upsample=False)
+    return x
+
+
+def residual_simple_siamese(
         input_shape,
         embedding_size,
         embedding_type,
@@ -33,7 +48,6 @@ def make_residual_simple_siamese(
         resolution,
         drop_rate,
         dropout_structure,
-        noise,
 ):
     input_sizes = {512: 0, 256: 0, 128: 0, 64: 0, 32: 0, }
     assert input_shape[0] == input_shape[1], "Only Squared Inputs! - {} / {} -".format(input_shape[0], input_shape[1])
@@ -48,8 +62,6 @@ def make_residual_simple_siamese(
         activation=embedding_activation,
         drop_rate=drop_rate,
         dropout_structure=dropout_structure,
-        noise=noise,
-        skip=False,
     )
     bottleneck, x = emb.build(x)
     encoder = keras.Model(input_layer, x, name="encoder")
@@ -73,77 +85,6 @@ def make_residual_simple_siamese(
     return encoder, predictor
 
 
-def make_decoder_stack(feature_map_after_bottleneck, depth, resolution, scale=0):
-    x = feature_map_after_bottleneck
-    for i in range(depth):
-        filters = [
-            16 * 2**(depth - i - 1) * resolution,
-            8 * 2**(depth - i - 1) * resolution,
-            8 * 2**(depth - i - 1) * resolution,
-        ]
-        x = make_residual_decoder_block(x, filters, ident=i + 1)
-        if scale > 0:
-            for scale in range(scale):
-                x = make_residual_decoder_block(x, filters, ident="{}-ident-{}".format(i + 1, scale), upsample=False)
-    return x
-
-
-def residual_classifier_wo_embedding(
-        input_shape,
-        depth,
-        resolution,
-        scale,
-        drop_rate,
-        dropout_structure,
-        noise,
-        n_classes,
-):
-    input_sizes = {512: 0, 256: 0, 128: 0, 64: 0, 32: 0, }
-    assert input_shape[0] == input_shape[1], "Only Squared Inputs! - {} / {} -".format(input_shape[0], input_shape[1])
-    assert input_shape[0] in input_sizes, "Input Size is not supported ({})".format(input_shape[0])
-    input_layer = layers.Input(batch_shape=(None, input_shape[0], input_shape[1], input_shape[2]))
-
-    x = make_encoder_stack(input_layer, depth, resolution, scale)
-    x = layers.GlobalAvgPool2D()(x)
-    output = add_classification_head(x, n_classes=n_classes, hidden_units=[], dropout_rate=0.75)
-    return input_layer, output
-
-
-def residual_classifier_wo_extra_block(
-        input_shape,
-        embedding_size,
-        embedding_type,
-        embedding_activation,
-        depth,
-        scale,
-        resolution,
-        drop_rate,
-        dropout_structure,
-        noise,
-        n_classes,
-):
-    input_sizes = {512: 0, 256: 0, 128: 0, 64: 0, 32: 0, }
-    assert input_shape[0] == input_shape[1], "Only Squared Inputs! - {} / {} -".format(input_shape[0], input_shape[1])
-    assert input_shape[0] in input_sizes, "Input Size is not supported ({})".format(input_shape[0])
-    input_layer = layers.Input(batch_shape=(None, input_shape[0], input_shape[1], input_shape[2]))
-
-    x = make_encoder_stack(input_layer, depth, resolution, scale)
-
-    emb = Embedding(
-        embedding_size=embedding_size,
-        embedding_type=embedding_type,
-        activation=embedding_activation,
-        drop_rate=drop_rate,
-        dropout_structure=dropout_structure,
-        noise=noise,
-        skip=False,
-    )
-    x, _ = emb.build(x)
-
-    output = add_classification_head(x, n_classes=n_classes, hidden_units=[], dropout_rate=0.75)
-    return input_layer, output
-
-
 def residual_classifier(
         input_shape,
         embedding_size,
@@ -154,7 +95,6 @@ def residual_classifier(
         resolution,
         drop_rate,
         dropout_structure,
-        noise,
         n_classes,
 ):
     input_sizes = {512: 0, 256: 0, 128: 0, 64: 0, 32: 0, }
@@ -170,22 +110,10 @@ def residual_classifier(
         activation=embedding_activation,
         drop_rate=drop_rate,
         dropout_structure=dropout_structure,
-        noise=noise,
-        skip=False,
     )
-    x_1, _ = emb.build(x)
+    x = emb.build(x)
 
-    filters = [
-        8 * 2 ** depth * resolution,
-        8 * 2 ** depth * resolution,
-        16 * 2 ** depth * resolution
-    ]
-    x_2 = make_clf_residual_encoder_block(x, filters, ident="final")
-    x_2 = layers.GlobalAvgPool2D()(x_2)
-
-    x = layers.Concatenate()([x_1, x_2])
-
-    output = add_classification_head(x, n_classes=n_classes, hidden_units=[512], dropout_rate=0.75)
+    output = add_classification_head(x, n_classes=n_classes, hidden_units=[], dropout_rate=0.75)
     return input_layer, output
 
 
@@ -199,8 +127,6 @@ def patchify_residual_auto_encoder(
         resolution,
         drop_rate,
         dropout_structure,
-        noise,
-        skip,
         asymmetrical,
         patch_size=4
 ):
@@ -209,7 +135,7 @@ def patchify_residual_auto_encoder(
     assert input_shape[0] in input_sizes, "Input Size is not supported ({})".format(input_shape[0])
     input_layer = layers.Input(batch_shape=(None, input_shape[0], input_shape[1], input_shape[2]))
 
-    x = layers.Convolution2D(8 * resolution, (patch_size, patch_size), (patch_size, patch_size), name="PATCHIFY")(input_layer)
+    x = layers.Convolution2D(16, (patch_size, patch_size), (patch_size, patch_size), name="PATCHIFY")(input_layer)
     x = relu_bn(x, name="PATCHIFY_NORM")
 
     if dropout_structure.startswith("patch_"):
@@ -228,10 +154,9 @@ def patchify_residual_auto_encoder(
         activation=embedding_activation,
         drop_rate=drop_rate,
         dropout_structure=dropout_structure,
-        noise=noise,
-        skip=skip,
     )
-    bottleneck, x = emb.build(x)
+    bottleneck = emb.build(x)
+    x = bottleneck
 
     reshape_layer_dim = input_shape[0] / (2 ** depth) / 2
     assert reshape_layer_dim in [2 ** count for count in [0, 1, 2, 3, 4, 5, 6]]
@@ -257,16 +182,20 @@ def residual_auto_encoder(
         resolution,
         drop_rate,
         dropout_structure,
-        noise,
-        skip,
-        asymmetrical
+        asymmetrical,
+        use_stem=False,
 ):
     input_sizes = {512: 0, 256: 0, 128: 0, 64: 0, 32: 0, }
     assert input_shape[0] == input_shape[1], "Only Squared Inputs! - {} / {} -".format(input_shape[0], input_shape[1])
     assert input_shape[0] in input_sizes, "Input Size is not supported ({})".format(input_shape[0])
     input_layer = layers.Input(batch_shape=(None, input_shape[0], input_shape[1], input_shape[2]))
 
-    x = make_encoder_stack(input_layer, depth, resolution, scale=scale)
+    if use_stem:
+        x = layers.Convolution2D(16, (3, 3), (2, 2), name="STEM")(input_layer)
+        x = relu_bn(x, name="STEM-NORM")
+    else:
+        x = input_layer
+    x = make_encoder_stack(x, depth, resolution, scale=scale)
 
     emb = Embedding(
         embedding_size=embedding_size,
@@ -274,12 +203,11 @@ def residual_auto_encoder(
         activation=embedding_activation,
         drop_rate=drop_rate,
         dropout_structure=dropout_structure,
-        noise=noise,
-        skip=skip,
     )
-    bottleneck, x = emb.build(x)
+    bottleneck = emb.build(x)
+    x = bottleneck
 
-    reshape_layer_dim = input_shape[0] / (2 ** depth)
+    reshape_layer_dim = input_shape[0] / (2 ** depth) / 2
     assert reshape_layer_dim in [2 ** count for count in [0, 1, 2, 3, 4, 5, 6]]
 
     if asymmetrical:
@@ -289,7 +217,7 @@ def residual_auto_encoder(
         x = transform_to_feature_maps(x, reshape_layer_dim, reshape_layer_dim, embedding_size)
         x = make_decoder_stack(x, depth, resolution, scale=scale)
 
-    output = layers.Conv2DTranspose(3, 3, 1, padding='same', activation='linear', name='conv_transpose_5')(x)
+    output = layers.Conv2DTranspose(3, 3, 2, padding='same', activation='linear', name='conv_transpose_5')(x)
     return input_layer, bottleneck, output
 
 
@@ -326,13 +254,13 @@ def residual_variational_auto_encoder(
 
     latent_inputs = keras.Input(shape=(embedding_size,))
 
-    reshape_layer_dim = input_shape[0] / (2 ** depth)
+    reshape_layer_dim = input_shape[0] / (2 ** depth) / 2
     assert reshape_layer_dim in [2 ** count for count in [0, 1, 2, 3, 4, 5, 6]]
 
     x = transform_to_feature_maps(latent_inputs, reshape_layer_dim, reshape_layer_dim, embedding_size)
     x = make_decoder_stack(x, depth, resolution, scale)
 
-    output = layers.Conv2DTranspose(3, 3, 1, padding='same', activation='linear', name='conv_transpose_5')(x)
+    output = layers.Conv2DTranspose(3, 3, 2, padding='same', activation='linear', name='conv_transpose_5')(x)
     decoder = keras.Model(latent_inputs, output, name="decoder")
 
     return encoder, decoder

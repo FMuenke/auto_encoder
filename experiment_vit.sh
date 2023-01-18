@@ -1,7 +1,7 @@
 #!/bin/sh
 
-model="../AE.1/"
-data="../cifar-100"
+model="../AE.1"
+data="../TS-DATA-GROUPED"
 
 
 for R in 4 8 16
@@ -13,7 +13,7 @@ do
     then
       echo "Directory $current_model_folder"
     else
-      python train_ae.py -df $data/train --model $current_model_folder -bb vit --resolution $R -size $EMB
+      python train_ae.py -df $data/train --model $current_model_folder -bb vit --resolution $R -esize $EMB
       python semi_supervised_classification.py -df $data --model $current_model_folder
     fi
 
@@ -22,7 +22,7 @@ do
     then
       echo "Directory $current_model_folder"
     else
-      python train_ae.py -df $data/train --model $current_model_folder -bb vit --resolution $R -size $EMB -drop 0.75 -drops local
+      python train_ae.py -df $data/train --model $current_model_folder -bb vit --resolution $R -esize $EMB -drop 0.75 -drops local
       python semi_supervised_classification.py -df $data --model $current_model_folder
     fi
 
@@ -31,7 +31,7 @@ do
     then
       echo "Directory $current_model_folder"
     else
-      python train_ae.py -df $data/train --model $current_model_folder -asym True -bb vit --resolution $R -size $EMB -drop 0.75 -drops local
+      python train_ae.py -df $data/train --model $current_model_folder -asym True -bb vit --resolution $R -esize $EMB -drop 0.75 -drops local
       python semi_supervised_classification.py -df $data --model $current_model_folder
     fi
   done
