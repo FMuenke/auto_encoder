@@ -44,10 +44,6 @@ def get_augmenter(min_area, brightness, jitter, input_shape):
     return keras.Sequential(
         [
             keras.Input(shape=(input_shape[0], input_shape[1], 3)),
-            layers.Rescaling(1 / 255),
-            layers.RandomFlip("horizontal"),
-            layers.RandomTranslation(zoom_factor / 2, zoom_factor / 2),
-            layers.RandomZoom((-zoom_factor, 0.0), (-zoom_factor, 0.0)),
             RandomColorAffine(brightness, jitter),
         ]
     )

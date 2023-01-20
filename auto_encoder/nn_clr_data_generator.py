@@ -1,11 +1,13 @@
 from tensorflow import keras
 import numpy as np
+import cv2
+
 
 from auto_encoder.util import prepare_input_sim_clr
 from auto_encoder.augmentations import Augmentations
 
 
-class SimCLRDataGenerator(keras.utils.Sequence):
+class NNCLRDataGenerator(keras.utils.Sequence):
     def __init__(
         self,
         tag_set,
