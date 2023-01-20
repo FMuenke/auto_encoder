@@ -73,53 +73,6 @@ def make_residual_encoder(
     return input_layer, bottleneck
 
 
-def residual_simple_siamese(
-        input_shape,
-        embedding_size,
-        embedding_type,
-        embedding_activation,
-        depth,
-        scale,
-        resolution,
-        drop_rate,
-        dropout_structure,
-):
-    input_sizes = {512: 0, 256: 0, 128: 0, 64: 0, 32: 0, }
-    assert input_shape[0] == input_shape[1], "Only Squared Inputs! - {} / {} -".format(input_shape[0], input_shape[1])
-    assert input_shape[0] in input_sizes, "Input Size is not supported ({})".format(input_shape[0])
-    input_layer = layers.Input(batch_shape=(None, input_shape[0], input_shape[1], input_shape[2]))
-
-    x = make_encoder_stack(input_layer, depth, resolution, scale=scale)
-
-    emb = Embedding(
-        embedding_size=embedding_size,
-        embedding_type=embedding_type,
-        activation=embedding_activation,
-        drop_rate=drop_rate,
-        dropout_structure=dropout_structure,
-    )
-    bottleneck, x = emb.build(x)
-    encoder = keras.Model(input_layer, x, name="encoder")
-
-    predictor = keras.Sequential(
-        [
-            # Note the AutoEncoder-like structure.
-            layers.Input((embedding_size,)),
-            layers.Dense(
-                int(embedding_size / 4),
-                use_bias=False,
-                kernel_regularizer=keras.regularizers.l2(0.0005),
-            ),
-            layers.ReLU(),
-            layers.BatchNormalization(),
-            layers.Dense(embedding_size),
-        ],
-        name="predictor",
-    )
-
-    return encoder, predictor
-
-
 def residual_classifier(
         input_shape,
         embedding_size,

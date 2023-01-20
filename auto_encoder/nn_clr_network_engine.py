@@ -15,9 +15,7 @@ class RandomResizedCrop(layers.Layer):
         width = tf.shape(images)[2]
 
         random_scales = tf.random.uniform((batch_size,), self.scale[0], self.scale[1])
-        random_ratios = tf.exp(
-            tf.random.uniform((batch_size,), self.log_ratio[0], self.log_ratio[1])
-        )
+        random_ratios = tf.exp(tf.random.uniform((batch_size,), self.log_ratio[0], self.log_ratio[1]))
 
         new_heights = tf.clip_by_value(tf.sqrt(random_scales / random_ratios), 0, 1)
         new_widths = tf.clip_by_value(tf.sqrt(random_scales * random_ratios), 0, 1)
@@ -33,9 +31,7 @@ class RandomResizedCrop(layers.Layer):
             ],
             axis=1,
         )
-        images = tf.image.crop_and_resize(
-            images, bounding_boxes, tf.range(batch_size), (height, width)
-        )
+        images = tf.image.crop_and_resize(images, bounding_boxes, tf.range(batch_size), (height, width))
         return images
 
 
@@ -134,7 +130,8 @@ class NNCLR(keras.Model):
             features_2 - tf.reduce_mean(features_2, axis=0)
         ) / tf.math.reduce_std(features_2, axis=0)
 
-        batch_size = tf.shape(features_1, out_type=tf.float32)[0]
+        batch_size = tf.shape(features_1, out_type=tf.int32)[0]
+        batch_size = tf.cast(batch_size, dtype=tf.float32)
         cross_correlation = (
             tf.matmul(features_1, features_2, transpose_a=True) / batch_size
         )
@@ -232,6 +229,11 @@ class NNCLR(keras.Model):
             "c_acc": self.contrastive_accuracy.result(),
             "r_acc": self.correlation_accuracy.result(),
         }
+
+    def call(self, inputs, training=None, mask=None):
+        z = self.encoder(inputs)
+        p = self.projection_head(z)
+        return p
 
     # def test_step(self, data):
         # labeled_images, labels = data

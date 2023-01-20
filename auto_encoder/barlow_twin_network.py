@@ -1,11 +1,13 @@
 import os
 import pickle
 import numpy as np
+from tensorflow import keras
+import tensorflow_addons as tfa
 from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping, CSVLogger
 
 from auto_encoder.auto_encoder import AutoEncoder
 
-from auto_encoder.residual import residual_simple_siamese
+from auto_encoder.residual import make_residual_encoder
 from auto_encoder.barlow_twin_network_engine import BarlowTwin, BarlowLoss
 from auto_encoder.barlow_twin_data_generator import DataGenerator
 
@@ -16,10 +18,11 @@ class BarlowTwinNetwork(AutoEncoder):
     def __init__(self, model_folder, cfg):
         super(BarlowTwinNetwork, self).__init__(model_folder, cfg)
         self.metric_to_track = "loss"
+        self.batch_size = 512
 
     def get_backbone(self):
         if self.backbone in ["resnet", "residual"]:
-            encoder, decoder = residual_simple_siamese(
+            input_layer, x = make_residual_encoder(
                 input_shape=self.input_shape,
                 embedding_size=self.embedding_size,
                 embedding_type=self.embedding_type,
@@ -32,7 +35,7 @@ class BarlowTwinNetwork(AutoEncoder):
             )
         else:
             raise ValueError("{} Backbone was not recognised".format(self.backbone))
-
+        encoder = keras.Model(input_layer, x, name="encoder")
         return BarlowTwin(encoder)
 
     def encode(self, data):
@@ -48,7 +51,7 @@ class BarlowTwinNetwork(AutoEncoder):
 
         self.load()
         if compile_model:
-            self.model.compile(optimizer=self.optimizer, loss=BarlowLoss(self.batch_size))
+            self.model.compile(optimizer=tfa.optimizers.LAMB(), loss=BarlowLoss(self.batch_size))
 
     def fit(self, tag_set_train, tag_set_test, augmentations):
         print("[INFO] Training with {} / Testing with {}".format(len(tag_set_train), len(tag_set_test)))

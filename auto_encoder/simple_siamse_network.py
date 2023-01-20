@@ -7,7 +7,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, CSVLogger
 
 from auto_encoder.simple_siamese_data_generator import DataGenerator
 from auto_encoder.auto_encoder import AutoEncoder
-from auto_encoder.residual import residual_simple_siamese
+from auto_encoder.residual import make_residual_encoder
 from auto_encoder.resnet import resnet_encoder
 from auto_encoder.simple_siamese_network_engine import SimSiamEngine
 
@@ -27,7 +27,7 @@ class SimpleSiameseNetwork(AutoEncoder):
 
     def get_backbone(self):
         if self.backbone in ["resnet", "residual"]:
-            encoder, decoder = residual_simple_siamese(
+            input_layer, x = make_residual_encoder(
                 input_shape=self.input_shape,
                 embedding_size=self.embedding_size,
                 embedding_type=self.embedding_type,
@@ -39,7 +39,7 @@ class SimpleSiameseNetwork(AutoEncoder):
                 dropout_structure=self.dropout_structure
             )
         elif self.backbone == "resnet18":
-            encoder, decoder = resnet_encoder(
+            input_layer, x = resnet_encoder(
                 input_shape=self.input_shape,
                 embedding_size=self.embedding_size,
                 embedding_type=self.embedding_type,
@@ -49,7 +49,7 @@ class SimpleSiameseNetwork(AutoEncoder):
                 dropout_structure=self.dropout_structure
             )
         elif self.backbone == "resnet2":
-            encoder, decoder = resnet_encoder(
+            input_layer, x = resnet_encoder(
                 input_shape=self.input_shape,
                 embedding_size=self.embedding_size,
                 embedding_type=self.embedding_type,
@@ -60,8 +60,8 @@ class SimpleSiameseNetwork(AutoEncoder):
             )
         else:
             raise ValueError("{} Backbone was not recognised".format(self.backbone))
-
-        return SimSiamEngine(encoder, decoder)
+        encoder = keras.Model(input_layer, x, name="encoder")
+        return SimSiamEngine(encoder, self.embedding_size)
 
     def encode(self, data):
         data = prepare_input(data, self.input_shape)

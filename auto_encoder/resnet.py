@@ -169,36 +169,13 @@ def resnet_encoder(
     # The learner
     x = learner(x, n_blocks)
 
-    x = layers.GlobalAveragePooling2D(name="backbone_pool")(x)
-
-    WEIGHT_DECAY = 0.0005
-
-    # Projection head.
-    x = layers.Dense(
-        embedding_size, use_bias=False, kernel_regularizer=keras.regularizers.l2(WEIGHT_DECAY)
-    )(x)
-    x = layers.BatchNormalization()(x)
-    x = layers.ReLU()(x)
-    x = layers.Dense(
-        embedding_size, use_bias=False, kernel_regularizer=keras.regularizers.l2(WEIGHT_DECAY)
-    )(x)
-    x = layers.BatchNormalization()(x)
-    encoder = keras.Model(input_layer, x, name="encoder")
-
-    predictor = keras.Sequential(
-        [
-            # Note the AutoEncoder-like structure.
-            layers.Input((embedding_size,)),
-            layers.Dense(
-                int(embedding_size / 4),
-                use_bias=False,
-                kernel_regularizer=keras.regularizers.l2(0.0005),
-            ),
-            layers.ReLU(),
-            layers.BatchNormalization(),
-            layers.Dense(embedding_size),
-        ],
-        name="predictor",
+    emb = Embedding(
+        embedding_size=embedding_size,
+        embedding_type=embedding_type,
+        activation=embedding_activation,
+        drop_rate=drop_rate,
+        dropout_structure=dropout_structure,
     )
+    bottleneck = emb.build(x)
 
-    return encoder, predictor
+    return input_layer, bottleneck

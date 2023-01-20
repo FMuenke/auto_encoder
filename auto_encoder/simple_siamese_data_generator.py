@@ -37,19 +37,18 @@ def random_apply(func, x, p):
         return x
 
 
-def flip_random_crop(image):
+def flip_random_crop(image, image_size):
     # With random crops we also apply horizontal flipping.
     image = tf.image.random_flip_left_right(image)
-    CROP_TO = 32
-    image = tf.image.random_crop(image, (CROP_TO, CROP_TO, 3))
+    image = tf.image.random_crop(image, (image_size, image_size, 3))
     return image
 
 
-def custom_augment(image):
+def custom_augment(image, image_size):
     # As discussed in the SimCLR paper, the series of augmentation
     # transformations (except for random crops) need to be applied
     # randomly to impose translational invariance.
-    image = flip_random_crop(image)
+    image = flip_random_crop(image, image_size)
     image = random_apply(color_jitter, image, p=0.8)
     image = random_apply(color_drop, image, p=0.2)
     return image
@@ -119,11 +118,14 @@ class DataGenerator(keras.utils.Sequence):
             img_1 = tag.load_x()
             img_2 = np.copy(img_1)
 
+            img_1 = cv2.resize(img_1, (int(self.image_size[1]), int(self.image_size[0])), interpolation=cv2.INTER_CUBIC)
+            img_2 = cv2.resize(img_2, (int(self.image_size[1]), int(self.image_size[0])), interpolation=cv2.INTER_CUBIC)
+
             # img_1, _ = self.augmentations.apply(img_1, img_1)
             # img_2, _ = self.augmentations.apply(img_2, img_2)
 
-            img_1 = np.array(custom_augment(img_1))
-            img_2 = np.array(custom_augment(img_2))
+            img_1 = np.array(custom_augment(img_1, self.image_size[0]))
+            img_2 = np.array(custom_augment(img_2, self.image_size[0]))
 
             # cv2.imwrite("./test_image/aug_{}_1.png".format(i), img_1)
             # cv2.imwrite("./test_image/aug_{}_2.png".format(i), img_2)

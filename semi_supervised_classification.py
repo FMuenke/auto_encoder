@@ -12,6 +12,7 @@ from auto_encoder.auto_encoder import AutoEncoder
 from auto_encoder.barlow_twin_network import BarlowTwinNetwork
 from auto_encoder.simple_siamse_network import SimpleSiameseNetwork
 from auto_encoder.sim_clr_network import SimpleContrastiveLearning
+from auto_encoder.nn_clr_network import NearestNeighbourCLRNetwork
 from auto_encoder.variational_auto_encoder import VariationalAutoEncoder
 
 from auto_encoder.util import save_dict, load_dict
@@ -62,11 +63,14 @@ def get_data_sets(ds_path_train, ds_path_test, model_path, class_mapping):
         elif cfg.opt["type"] == "simsiam":
             ae = SimpleSiameseNetwork(model_path, cfg)
             ae.build(compile_model=False, add_decoder=False)
-        elif cfg.opt["type"] == "barlowtwin":
+        elif cfg.opt["type"] == "barlowtwins":
             ae = BarlowTwinNetwork(model_path, cfg)
             ae.build(compile_model=False, add_decoder=False)
         elif cfg.opt["type"] == "simclr":
             ae = SimpleContrastiveLearning(model_path, cfg)
+            ae.build(compile_model=False, add_decoder=False)
+        elif cfg.opt["type"] == "nnclr":
+            ae = NearestNeighbourCLRNetwork(model_path, cfg)
             ae.build(compile_model=False, add_decoder=False)
         else:
             raise Exception("UNKNOWN TYPE: {}".format(cfg.opt["type"]))

@@ -8,7 +8,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, CSVLogger
 from auto_encoder.sim_clr_data_generator import SimCLRDataGenerator
 from auto_encoder.auto_encoder import AutoEncoder
 from auto_encoder.residual import make_residual_encoder
-from auto_encoder.sim_clr_network_engine import ContrastiveModel
+from auto_encoder.nn_clr_network_engine import NNCLR
 
 from auto_encoder.util import check_n_make_dir, prepare_input_sim_clr
 
@@ -39,7 +39,7 @@ class NearestNeighbourCLRNetwork(AutoEncoder):
         else:
             raise ValueError("{} Backbone was not recognised".format(self.backbone))
 
-        return ContrastiveModel(
+        return NNCLR(
             encoder,
             self.embedding_size,
             temperature=self.temperature,
@@ -90,6 +90,7 @@ class NearestNeighbourCLRNetwork(AutoEncoder):
         )
 
         patience = 32
+        print(self.metric_to_track)
         early_stop = EarlyStopping(monitor=self.metric_to_track, patience=patience, verbose=1)
         csv_logger = CSVLogger(filename=os.path.join(self.model_folder, "logs.csv"))
 

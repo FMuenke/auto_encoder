@@ -117,7 +117,7 @@ def cls_test_run(x_train, y_train, x_test, y_test, n_labels, run_id):
     clf_list = [
         [LogisticRegression(max_iter=10000, n_jobs=-1), "LR"],
         [TfMlp(x_train.shape[1], 100, [512, 256], dropout_rate=0.75), "TF-MLP (512, 256) drp=0.75"],
-        [TfMlp(x_train.shape[1], 100, [1024], dropout_rate=0.75), "TF-MLP (1024) drp=0.75"],
+        # [TfMlp(x_train.shape[1], 100, [1024], dropout_rate=0.75), "TF-MLP (1024) drp=0.75"],
         [neighbors.NearestCentroid(), "NC"],
         [neighbors.KNeighborsClassifier(), "KNN"]
     ]

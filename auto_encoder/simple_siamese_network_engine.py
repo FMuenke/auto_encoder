@@ -1,4 +1,6 @@
 import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers
 
 
 def compute_loss(p, z):
@@ -14,10 +16,24 @@ def compute_loss(p, z):
 
 
 class SimSiamEngine(tf.keras.Model):
-    def __init__(self, encoder, predictor):
+    def __init__(self, encoder, embedding_size):
         super().__init__()
         self.encoder = encoder
-        self.predictor = predictor
+        self.predictor = keras.Sequential(
+            [
+                # Note the AutoEncoder-like structure.
+                layers.Input((embedding_size,)),
+                layers.Dense(
+                    int(embedding_size / 4),
+                    use_bias=False,
+                    kernel_regularizer=keras.regularizers.l2(0.0005),
+                ),
+                layers.ReLU(),
+                layers.BatchNormalization(),
+                layers.Dense(embedding_size),
+            ],
+            name="predictor",
+        )
         self.loss_tracker = tf.keras.metrics.Mean(name="loss")
 
     @property
