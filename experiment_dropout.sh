@@ -4,7 +4,7 @@ model="../AE.1"
 data="../TS-DATA-GROUPED"
 
 
-for DROP in 0.10 0.25 0.50 0.75 0.90 0.95
+for DROP in 0.10 0.25 0.50 0.75 0.90
 do
   for DSTRUCTURE in general spatial local
   do

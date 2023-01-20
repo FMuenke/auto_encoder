@@ -106,7 +106,7 @@ def apply_noise(img, tar, percentage):
     ])
     noise = SaltNPepper(
         max_delta=int(percentage * 256),
-        grain_size=grain_size
+        grain_size=np.max([grain_size, 1])
     )
     return noise.apply(img), tar
 
@@ -399,7 +399,6 @@ class EncoderTask:
             {"name": "CROSS_REMOVAL", "function": apply_cross_cut, "percentage": cross_cut},
             {"name": "PATCH_ROTATION", "function": apply_patch_rotation, "percentage": patch_rotation},
             {"name": "PATCH_SHUFFLING", "function": apply_patch_shuffling, "percentage": patch_shuffling},
-            {"name": "BLACKHOLE_MASKING", "function": apply_blackhole_mask, "percentage": black_hole},
             {"name": "BLURRING", "function": apply_blur, "percentage": blurring},
             {"name": "NOISE", "function": apply_noise, "percentage": noise},
             {"name": "WARP", "function": apply_warp, "percentage": warp},
