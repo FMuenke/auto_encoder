@@ -11,6 +11,7 @@ from auto_encoder.data_set import DataSet
 from auto_encoder.auto_encoder import AutoEncoder
 from auto_encoder.barlow_twin_network import BarlowTwinNetwork
 from auto_encoder.simple_siamse_network import SimpleSiameseNetwork
+from auto_encoder.sim_clr_network import SimpleContrastiveLearning
 from auto_encoder.variational_auto_encoder import VariationalAutoEncoder
 
 from auto_encoder.util import save_dict, load_dict
@@ -46,16 +47,10 @@ def load_data_set(model, path_to_data, class_mapping):
     return data_x, data_y
 
 
-def get_data_sets(ds_path_train, ds_path_test, model_path, class_mapping, direct_features):
+def get_data_sets(ds_path_train, ds_path_test, model_path, class_mapping):
     cfg = Config()
     if os.path.isfile(os.path.join(model_path, "opt.json")):
         cfg.opt = load_dict(os.path.join(model_path, "opt.json"))
-
-    if direct_features:
-        ds_ident = "_DIRECT"
-        cfg.opt["embedding_type"] = "direct_avg"
-    else:
-        ds_ident = ""
 
     if "type" in cfg.opt:
         if cfg.opt["type"] == "variational-autoencoder":
@@ -70,6 +65,9 @@ def get_data_sets(ds_path_train, ds_path_test, model_path, class_mapping, direct
         elif cfg.opt["type"] == "barlowtwin":
             ae = BarlowTwinNetwork(model_path, cfg)
             ae.build(add_decoder=False)
+        elif cfg.opt["type"] == "simclr":
+            ae = SimpleContrastiveLearning(model_path, cfg)
+            ae.build(add_decoder=False)
         else:
             raise Exception("UNKNOWN TYPE: {}".format(cfg.opt["type"]))
     else:
@@ -77,12 +75,7 @@ def get_data_sets(ds_path_train, ds_path_test, model_path, class_mapping, direct
         ae.build(add_decoder=False)
 
     x_train, y_train = load_data_set(ae, ds_path_train, class_mapping)
-    # np.save(os.path.join(model_path, "x_train{}.npy".format(ds_ident)), x_train)
-    # np.save(os.path.join(model_path, "y_train{}.npy".format(ds_ident)), y_train)
-
     x_test, y_test = load_data_set(ae, ds_path_test, class_mapping)
-    # np.save(os.path.join(model_path, "x_test{}.npy".format(ds_ident)), x_test)
-    # np.save(os.path.join(model_path, "y_test{}.npy".format(ds_ident)), y_test)
     return x_train, y_train, x_test, y_test
 
 
@@ -128,7 +121,7 @@ def main(args_):
     x_train, y_train, x_test, y_test = get_data_sets(
         os.path.join(df, "train"),
         os.path.join(df, "test"),
-        model_path, class_mapping, direct_features
+        model_path, class_mapping
     )
 
     # x_train = np.load(os.path.join(model_path, "x_train{}.npy".format(ds_ident)))

@@ -11,6 +11,13 @@ def prepare_input(data, input_shape):
     return data
 
 
+def prepare_input_sim_clr(data, input_shape):
+    data = cv2.resize(data, (int(input_shape[1]), int(input_shape[0])), interpolation=cv2.INTER_CUBIC)
+    data = data.astype(np.float)
+    data = data / 255
+    return data
+
+
 def check_n_make_dir(tar_dir, clean=False):
     """
     checks if a directory exits and maks one if necessary

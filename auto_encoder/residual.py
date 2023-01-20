@@ -38,6 +38,41 @@ def make_decoder_stack(feature_map_after_bottleneck, depth, resolution, scale=0)
     return x
 
 
+def make_residual_encoder(
+        input_shape,
+        embedding_size,
+        embedding_type,
+        embedding_activation,
+        depth,
+        scale,
+        resolution,
+        drop_rate,
+        dropout_structure,
+        use_stem=False,
+):
+    input_sizes = {512: 0, 256: 0, 128: 0, 64: 0, 32: 0, }
+    assert input_shape[0] == input_shape[1], "Only Squared Inputs! - {} / {} -".format(input_shape[0], input_shape[1])
+    assert input_shape[0] in input_sizes, "Input Size is not supported ({})".format(input_shape[0])
+    input_layer = layers.Input(batch_shape=(None, input_shape[0], input_shape[1], input_shape[2]))
+
+    if use_stem:
+        x = layers.Convolution2D(16, (3, 3), (2, 2), name="STEM")(input_layer)
+        x = relu_bn(x, name="STEM-NORM")
+    else:
+        x = input_layer
+    x = make_encoder_stack(x, depth, resolution, scale=scale)
+
+    emb = Embedding(
+        embedding_size=embedding_size,
+        embedding_type=embedding_type,
+        activation=embedding_activation,
+        drop_rate=drop_rate,
+        dropout_structure=dropout_structure,
+    )
+    bottleneck = emb.build(x)
+    return input_layer, bottleneck
+
+
 def residual_simple_siamese(
         input_shape,
         embedding_size,
