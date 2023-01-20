@@ -13,9 +13,9 @@ from auto_encoder.sim_clr_network_engine import ContrastiveModel
 from auto_encoder.util import check_n_make_dir, prepare_input_sim_clr
 
 
-class SimpleContrastiveLearning(AutoEncoder):
+class NearestNeighbourCLRNetwork(AutoEncoder):
     def __init__(self, model_folder, cfg):
-        super(SimpleContrastiveLearning, self).__init__(model_folder, cfg)
+        super(NearestNeighbourCLRNetwork, self).__init__(model_folder, cfg)
         self.metric_to_track = "c_loss"
         if "temperature" not in cfg.opt:
             self.temperature = 0.1

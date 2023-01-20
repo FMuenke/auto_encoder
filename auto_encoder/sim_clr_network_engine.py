@@ -74,11 +74,6 @@ class ContrastiveModel(keras.Model):
         # self.encoder.summary()
         # self.projection_head.summary()
 
-    def compile(self, contrastive_optimizer, **kwargs):
-        super().compile(**kwargs)
-
-        self.contrastive_optimizer = contrastive_optimizer
-
         self.contrastive_loss_tracker = keras.metrics.Mean(name="c_loss")
         self.contrastive_accuracy = keras.metrics.SparseCategoricalAccuracy(name="c_acc")
 
@@ -133,7 +128,7 @@ class ContrastiveModel(keras.Model):
             contrastive_loss,
             self.encoder.trainable_weights + self.projection_head.trainable_weights,
         )
-        self.contrastive_optimizer.apply_gradients(
+        self.optimizer.apply_gradients(
             zip(
                 gradients,
                 self.encoder.trainable_weights + self.projection_head.trainable_weights,
