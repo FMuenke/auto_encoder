@@ -51,9 +51,9 @@ def get_augmenter(min_area, brightness, jitter, input_shape):
 
 # Define the contrastive model with model-subclassing
 class ContrastiveModel(keras.Model):
-    def __init__(self, encoder, embedding_size, temperature, input_shape):
+    def __init__(self, encoder, temperature, input_shape):
         super().__init__()
-
+        projection_size = int(encoder.output.shape[-1])
         self.temperature = temperature
         contrastive_augmentation = {"min_area": 0.25, "brightness": 0.6, "jitter": 0.2, "input_shape": input_shape}
         self.contrastive_augmenter = get_augmenter(**contrastive_augmentation)
@@ -61,9 +61,9 @@ class ContrastiveModel(keras.Model):
         # Non-linear MLP as projection head
         self.projection_head = keras.Sequential(
             [
-                keras.Input(shape=(embedding_size,)),
-                layers.Dense(embedding_size, activation="relu"),
-                layers.Dense(embedding_size),
+                keras.Input(shape=(projection_size,)),
+                layers.Dense(projection_size, activation="relu"),
+                layers.Dense(projection_size),
             ],
             name="projection_head",
         )

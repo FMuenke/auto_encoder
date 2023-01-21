@@ -3,8 +3,8 @@ from tensorflow import keras
 from tensorflow.keras import layers
 import tensorflow_addons as tfa
 
-from auto_encoder.embedding import Embedding, transform_to_features, transform_to_feature_maps
-from auto_encoder.linear import make_decoder_stack
+from auto_encoder.backbone.embedding import Embedding, transform_to_features, transform_to_feature_maps
+from auto_encoder.backbone.linear import make_decoder_stack
 
 
 class MLPMixerLayer(layers.Layer):

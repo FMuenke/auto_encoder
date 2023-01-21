@@ -9,7 +9,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, Early
 
 
 from auto_encoder.residual import residual_classifier
-from auto_encoder.linear import linear_auto_encoder
+from auto_encoder.backbone.linear import linear_auto_encoder
 from auto_encoder.vision_transformer import vit_auto_encoder
 from auto_encoder.data_generator import ClassificationDataGenerator
 

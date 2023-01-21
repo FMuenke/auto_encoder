@@ -1,11 +1,11 @@
 from tensorflow import keras
 from tensorflow.keras import layers
 
-from auto_encoder.embedding import Embedding, transform_to_feature_maps
-from auto_encoder.sampling_layer import Sampling
+from auto_encoder.backbone.embedding import Embedding, transform_to_feature_maps
+from auto_encoder.backbone.sampling_layer import Sampling
 
-from auto_encoder.essentials import make_small_residual_encoder_block
-from auto_encoder.essentials import make_small_residual_decoder_block
+from auto_encoder.backbone.essentials import make_small_residual_encoder_block
+from auto_encoder.backbone.essentials import make_small_residual_decoder_block
 
 
 def make_encoder_stack(input_layer, depth, resolution, scale=0):

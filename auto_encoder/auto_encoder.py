@@ -7,11 +7,11 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping, CSVLogger
 
 
-from auto_encoder.residual import residual_auto_encoder, patchify_residual_auto_encoder
-from auto_encoder.linear import linear_auto_encoder
-from auto_encoder.mlp import mlp_auto_encoder
-from auto_encoder.vision_transformer import vit_auto_encoder
-from auto_encoder.small_residual import small_residual_auto_encoder
+from auto_encoder.backbone.residual import residual_auto_encoder, patchify_residual_auto_encoder
+from auto_encoder.backbone.linear import linear_auto_encoder
+from auto_encoder.backbone.mlp import mlp_auto_encoder
+from auto_encoder.backbone.vision_transformer import vit_auto_encoder
+from auto_encoder.backbone.small_residual import small_residual_auto_encoder
 from auto_encoder.data_generator import DataGenerator
 
 from auto_encoder.util import check_n_make_dir

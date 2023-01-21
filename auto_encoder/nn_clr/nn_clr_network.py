@@ -1,14 +1,13 @@
 import numpy as np
 import os
 import pickle
-import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, CSVLogger
 
-from auto_encoder.sim_clr_data_generator import SimCLRDataGenerator
+from auto_encoder.sim_clr.sim_clr_data_generator import SimCLRDataGenerator
 from auto_encoder.auto_encoder import AutoEncoder
-from auto_encoder.residual import make_residual_encoder
-from auto_encoder.nn_clr_network_engine import NNCLR
+from auto_encoder.backbone.residual import make_residual_encoder
+from auto_encoder.nn_clr.nn_clr_network_engine import NNCLR
 
 from auto_encoder.util import check_n_make_dir, prepare_input_sim_clr
 
@@ -41,7 +40,6 @@ class NearestNeighbourCLRNetwork(AutoEncoder):
 
         return NNCLR(
             encoder,
-            self.embedding_size,
             temperature=self.temperature,
             input_shape=self.input_shape
         )

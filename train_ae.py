@@ -2,13 +2,13 @@ import os
 import tensorflow as tf
 from auto_encoder.data_set import DataSet
 from auto_encoder.auto_encoder import AutoEncoder
-from auto_encoder.simple_siamse_network import SimpleSiameseNetwork
-from auto_encoder.barlow_twin_network import BarlowTwinNetwork
-from auto_encoder.sim_clr_network import SimpleContrastiveLearning
-from auto_encoder.nn_clr_network import NearestNeighbourCLRNetwork
+from auto_encoder.sim_siam.sim_siam_network import SimpleSiameseNetwork
+from auto_encoder.barlow_twins.barlow_twin_network import BarlowTwinNetwork
+from auto_encoder.sim_clr.sim_clr_network import SimpleContrastiveLearning
+from auto_encoder.nn_clr.nn_clr_network import NearestNeighbourCLRNetwork
 from auto_encoder.variational_auto_encoder import VariationalAutoEncoder
 
-from auto_encoder.augmentations import Augmentations, EncoderTask
+from auto_encoder.augmentations import EncoderTask
 
 from auto_encoder.util import save_dict, check_n_make_dir
 

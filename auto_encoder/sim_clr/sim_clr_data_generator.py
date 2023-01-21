@@ -21,11 +21,11 @@ class SimCLRDataGenerator(keras.utils.Sequence):
         self.augmentations = Augmentations(
             neutral_percentage=0.0,
             masking=0.0,
-            cross_cut=0.0,
+            cross_cut=0.20,
             patch_rotation=0.0,
             patch_shuffling=0.0,
             blurring=0.0,
-            noise=0.0,
+            noise=0.25,
             flip_rotate90=1.0,
             crop=0.20,
             patch_masking=0.0,

@@ -1,11 +1,7 @@
-import tensorflow as tf
-from tensorflow import keras
 from tensorflow.keras import layers
 
-from auto_encoder.essentials import relu_bn, add_dropout_2d, make_residual_encoder_block
-from auto_encoder.residual import make_encoder_stack, make_decoder_stack
-from auto_encoder.linear import make_decoder_stack as make_linear_decoder_stack
-from auto_encoder.embedding import Embedding, transform_to_feature_maps
+from auto_encoder.backbone.essentials import relu_bn, add_dropout_2d
+from auto_encoder.backbone.residual import make_encoder_stack, make_decoder_stack
 
 
 def still_auto_encoder(

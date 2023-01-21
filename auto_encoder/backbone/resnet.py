@@ -5,7 +5,7 @@ from tensorflow.keras import layers
 from tensorflow.keras.layers import Conv2D, Dense, Flatten, BatchNormalization, ReLU, Add
 from tensorflow.keras.layers import AveragePooling2D
 
-from auto_encoder.embedding import Embedding
+from auto_encoder.backbone.embedding import Embedding
 
 
 def stem(inputs):

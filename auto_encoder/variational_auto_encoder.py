@@ -3,8 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from auto_encoder.auto_encoder import AutoEncoder
-from auto_encoder.residual import residual_variational_auto_encoder
-from auto_encoder.linear import linear_variational_auto_encoder
+from auto_encoder.backbone.residual import residual_variational_auto_encoder
+from auto_encoder.backbone.linear import linear_variational_auto_encoder
 from auto_encoder.variational_auto_encoder_engine import VariationalAutoEncoderEngine
 
 from auto_encoder.util import prepare_input

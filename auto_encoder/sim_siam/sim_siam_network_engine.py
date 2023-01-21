@@ -16,21 +16,23 @@ def compute_loss(p, z):
 
 
 class SimSiamEngine(tf.keras.Model):
-    def __init__(self, encoder, embedding_size):
+    def __init__(self, encoder):
         super().__init__()
         self.encoder = encoder
+
+        projection_size = int(encoder.output.shape[-1])
         self.predictor = keras.Sequential(
             [
                 # Note the AutoEncoder-like structure.
-                layers.Input((embedding_size,)),
+                layers.Input((projection_size,)),
                 layers.Dense(
-                    int(embedding_size / 4),
+                    int(projection_size / 4),
                     use_bias=False,
                     kernel_regularizer=keras.regularizers.l2(0.0005),
                 ),
                 layers.ReLU(),
                 layers.BatchNormalization(),
-                layers.Dense(embedding_size),
+                layers.Dense(projection_size),
             ],
             name="predictor",
         )
@@ -54,9 +56,7 @@ class SimSiamEngine(tf.keras.Model):
             loss = compute_loss(p1, z2) / 2 + compute_loss(p2, z1) / 2
 
         # Compute gradients and update the parameters.
-        learnable_params = (
-            self.encoder.trainable_variables + self.predictor.trainable_variables
-        )
+        learnable_params = (self.encoder.trainable_variables + self.predictor.trainable_variables)
         gradients = tape.gradient(loss, learnable_params)
         self.optimizer.apply_gradients(zip(gradients, learnable_params))
 

@@ -72,7 +72,7 @@ def augmenter(brightness, name, scale, input_shape):
 
 
 class NNCLR(keras.Model):
-    def __init__(self, encoder, embedding_size, temperature, input_shape, queue_size=10000):
+    def __init__(self, encoder, temperature, input_shape, queue_size=10000):
         super().__init__()
         self.probe_accuracy = keras.metrics.SparseCategoricalAccuracy()
         self.correlation_accuracy = keras.metrics.SparseCategoricalAccuracy()
@@ -87,11 +87,12 @@ class NNCLR(keras.Model):
         }
         self.contrastive_augmenter = augmenter(**contrastive_augmenter)
         self.encoder = encoder
+        projection_size = int(encoder.output.shape[-1])
         self.projection_head = keras.Sequential(
             [
-                layers.Input(shape=(embedding_size,)),
-                layers.Dense(embedding_size, activation="relu"),
-                layers.Dense(embedding_size),
+                layers.Input(shape=(projection_size,)),
+                layers.Dense(projection_size, activation="relu"),
+                layers.Dense(projection_size),
             ],
             name="projection_head",
         )

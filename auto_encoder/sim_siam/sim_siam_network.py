@@ -1,24 +1,29 @@
+import numpy as np
 import os
 import pickle
-import numpy as np
+import tensorflow as tf
 from tensorflow import keras
-import tensorflow_addons as tfa
-from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping, CSVLogger
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, CSVLogger
 
+from auto_encoder.sim_siam.sim_siam_data_generator import DataGenerator
 from auto_encoder.auto_encoder import AutoEncoder
-
-from auto_encoder.residual import make_residual_encoder
-from auto_encoder.barlow_twin_network_engine import BarlowTwin, BarlowLoss
-from auto_encoder.barlow_twin_data_generator import DataGenerator
+from auto_encoder.backbone.residual import make_residual_encoder
+from auto_encoder.backbone.resnet import resnet_encoder
+from auto_encoder.sim_siam.sim_siam_network_engine import SimSiamEngine
 
 from auto_encoder.util import check_n_make_dir, prepare_input
 
 
-class BarlowTwinNetwork(AutoEncoder):
+class SimpleSiameseNetwork(AutoEncoder):
     def __init__(self, model_folder, cfg):
-        super(BarlowTwinNetwork, self).__init__(model_folder, cfg)
+        super(SimpleSiameseNetwork, self).__init__(model_folder, cfg)
         self.metric_to_track = "loss"
+
+        epochs = 5
         self.batch_size = 512
+        steps = epochs * (50000 // self.batch_size)
+        lr_decayed_fn = tf.keras.experimental.CosineDecay(initial_learning_rate=0.003, decay_steps=steps)
+        self.optimizer = keras.optimizers.SGD(lr_decayed_fn, momentum=0.6)
 
     def get_backbone(self):
         if self.backbone in ["resnet", "residual"]:
@@ -33,10 +38,30 @@ class BarlowTwinNetwork(AutoEncoder):
                 drop_rate=self.drop_rate,
                 dropout_structure=self.dropout_structure
             )
+        elif self.backbone == "resnet18":
+            input_layer, x = resnet_encoder(
+                input_shape=self.input_shape,
+                embedding_size=self.embedding_size,
+                embedding_type=self.embedding_type,
+                embedding_activation=self.embedding_activation,
+                n_blocks=18,
+                drop_rate=self.drop_rate,
+                dropout_structure=self.dropout_structure
+            )
+        elif self.backbone == "resnet2":
+            input_layer, x = resnet_encoder(
+                input_shape=self.input_shape,
+                embedding_size=self.embedding_size,
+                embedding_type=self.embedding_type,
+                embedding_activation=self.embedding_activation,
+                n_blocks=2,
+                drop_rate=self.drop_rate,
+                dropout_structure=self.dropout_structure
+            )
         else:
             raise ValueError("{} Backbone was not recognised".format(self.backbone))
         encoder = keras.Model(input_layer, x, name="encoder")
-        return BarlowTwin(encoder)
+        return SimSiamEngine(encoder)
 
     def encode(self, data):
         data = prepare_input(data, self.input_shape)
@@ -46,12 +71,17 @@ class BarlowTwinNetwork(AutoEncoder):
         return res
 
     def build(self, compile_model=True, add_decoder=True):
-        self.model = self.get_backbone()
-        self.model(np.zeros((1, self.input_shape[0], self.input_shape[1], 3)))
+        if not add_decoder:
+            self.embedding_type = "direct_avg"
+            self.model = self.get_backbone()
+            self.model = self.model.encoder
+        else:
+            self.model = self.get_backbone()
+            self.model(np.zeros((1, self.input_shape[0], self.input_shape[1], 3)))
 
         self.load()
         if compile_model:
-            self.model.compile(optimizer=tfa.optimizers.LAMB(), loss=BarlowLoss(self.batch_size))
+            self.model.compile(optimizer=self.optimizer)
 
     def fit(self, tag_set_train, tag_set_test, augmentations):
         print("[INFO] Training with {} / Testing with {}".format(len(tag_set_train), len(tag_set_test)))
@@ -81,13 +111,11 @@ class BarlowTwinNetwork(AutoEncoder):
             save_weights_only=True
         )
 
-        patience = 5
-        reduce_lr = ReduceLROnPlateau(monitor=self.metric_to_track, verbose=1, patience=int(patience*0.5))
-        # reduce_lr = CosineDecayRestarts(initial_learning_rate=self.init_learning_rate, first_decay_steps=1000)
+        patience = 32
         early_stop = EarlyStopping(monitor=self.metric_to_track, patience=patience, verbose=1)
         csv_logger = CSVLogger(filename=os.path.join(self.model_folder, "logs.csv"))
 
-        callback_list = [checkpoint, reduce_lr, early_stop, csv_logger]
+        callback_list = [checkpoint, early_stop, csv_logger]
 
         print("[INFO] Training started. Results: {}".format(self.model_folder))
         history = self.model.fit(

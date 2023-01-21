@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow.keras import layers, regularizers
 
-from auto_encoder.essentials import relu_bn, mlp
+from auto_encoder.backbone.essentials import relu_bn, mlp
 
 
 def create_dense_encoder(x, embedding_size):
