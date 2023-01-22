@@ -68,3 +68,19 @@ class SimSiamEngine(tf.keras.Model):
         z = self.encoder(inputs)
         p = self.predictor(z)
         return p
+
+    def test_step(self, data):
+        # Unpack the data.
+        ds_one, ds_two = data
+
+        # Forward pass through the encoder and predictor.
+        z1, z2 = self.encoder(ds_one), self.encoder(ds_two)
+        p1, p2 = self.predictor(z1), self.predictor(z2)
+        # Note that here we are enforcing the network to match
+        # the representations of two differently augmented batches
+        # of data.
+        loss = compute_loss(p1, z2) / 2 + compute_loss(p2, z1) / 2
+
+        # Monitor loss.
+        self.loss_tracker.update_state(loss)
+        return {"loss": self.loss_tracker.result()}

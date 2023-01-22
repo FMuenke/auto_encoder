@@ -17,8 +17,7 @@ from auto_encoder.util import check_n_make_dir, prepare_input
 class BarlowTwinNetwork(AutoEncoder):
     def __init__(self, model_folder, cfg):
         super(BarlowTwinNetwork, self).__init__(model_folder, cfg)
-        self.metric_to_track = "loss"
-        self.batch_size = 512
+        self.metric_to_track = "val_loss"
 
     def get_backbone(self):
         if self.backbone in ["resnet", "residual"]:
@@ -55,7 +54,6 @@ class BarlowTwinNetwork(AutoEncoder):
 
     def fit(self, tag_set_train, tag_set_test, augmentations):
         print("[INFO] Training with {} / Testing with {}".format(len(tag_set_train), len(tag_set_test)))
-        print("[INFO] Combining to {}".format(len(tag_set_train + tag_set_test)))
 
         if None in self.input_shape:
             print("Only Batch Size of 1 is possible.")
@@ -66,7 +64,14 @@ class BarlowTwinNetwork(AutoEncoder):
         self.batch_size = np.min([len(tag_set_train), len(tag_set_test), self.batch_size])
 
         training_generator = DataGenerator(
-            tag_set_train + tag_set_test,
+            tag_set_train,
+            image_size=self.input_shape,
+            batch_size=self.batch_size,
+            augmentations=augmentations,
+        )
+
+        validation_generator = DataGenerator(
+            tag_set_test,
             image_size=self.input_shape,
             batch_size=self.batch_size,
             augmentations=augmentations,
@@ -92,6 +97,7 @@ class BarlowTwinNetwork(AutoEncoder):
         print("[INFO] Training started. Results: {}".format(self.model_folder))
         history = self.model.fit(
             x=training_generator,
+            validation_data=validation_generator,
             callbacks=callback_list,
             epochs=self.epochs,
             verbose=1,

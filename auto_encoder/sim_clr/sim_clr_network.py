@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import pickle
+import tensorflow_addons as tfa
 from tensorflow import keras
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, CSVLogger
 
@@ -15,7 +16,7 @@ from auto_encoder.util import check_n_make_dir, prepare_input_sim_clr
 class SimpleContrastiveLearning(AutoEncoder):
     def __init__(self, model_folder, cfg):
         super(SimpleContrastiveLearning, self).__init__(model_folder, cfg)
-        self.metric_to_track = "c_loss"
+        self.metric_to_track = "val_c_loss"
         if "temperature" not in cfg.opt:
             self.temperature = 0.1
         else:
@@ -35,6 +36,13 @@ class SimpleContrastiveLearning(AutoEncoder):
                 dropout_structure=self.dropout_structure
             )
             encoder = keras.Model(input_layer, embedding, name="encoder")
+        elif self.backbone == "resnet50":
+            encoder = keras.applications.resnet50.ResNet50(
+                weights=None,
+                include_top=False,
+                pooling="avg",
+                input_shape=(self.input_shape[0], self.input_shape[1], 3),
+            )
         else:
             raise ValueError("{} Backbone was not recognised".format(self.backbone))
 
@@ -61,7 +69,6 @@ class SimpleContrastiveLearning(AutoEncoder):
 
     def fit(self, tag_set_train, tag_set_test, augmentations):
         print("[INFO] Training with {} / Testing with {}".format(len(tag_set_train), len(tag_set_test)))
-        print("[INFO] Combining to {}".format(len(tag_set_train + tag_set_test)))
 
         if None in self.input_shape:
             print("Only Batch Size of 1 is possible.")
@@ -72,7 +79,14 @@ class SimpleContrastiveLearning(AutoEncoder):
         self.batch_size = np.min([len(tag_set_train), len(tag_set_test), self.batch_size])
 
         training_generator = SimCLRDataGenerator(
-            tag_set_train + tag_set_test,
+            tag_set_train,
+            image_size=self.input_shape,
+            batch_size=self.batch_size,
+            augmentations=augmentations,
+        )
+
+        validation_generator = SimCLRDataGenerator(
+            tag_set_test,
             image_size=self.input_shape,
             batch_size=self.batch_size,
             augmentations=augmentations,
@@ -96,6 +110,7 @@ class SimpleContrastiveLearning(AutoEncoder):
         print("[INFO] Training started. Results: {}".format(self.model_folder))
         history = self.model.fit(
             x=training_generator,
+            validation_data=validation_generator,
             callbacks=callback_list,
             epochs=self.epochs,
             verbose=1,

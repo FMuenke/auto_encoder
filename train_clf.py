@@ -84,7 +84,6 @@ def main(args_):
         aug = Augmentations(
             blurring=cfg.opt["augmentation_intensity"],
             cross_cut=cfg.opt["augmentation_intensity"],
-            black_hole=cfg.opt["augmentation_intensity"],
             masking=cfg.opt["augmentation_intensity"],
             patch_rotation=cfg.opt["augmentation_intensity"],
             patch_shuffling=cfg.opt["augmentation_intensity"],

@@ -39,8 +39,7 @@ class RandomColorAffine(layers.Layer):
 
 
 # Image augmentation module
-def get_augmenter(min_area, brightness, jitter, input_shape):
-    zoom_factor = 1.0 - math.sqrt(min_area)
+def get_augmenter(brightness, jitter, input_shape):
     return keras.Sequential(
         [
             keras.Input(shape=(input_shape[0], input_shape[1], 3)),
@@ -55,8 +54,12 @@ class ContrastiveModel(keras.Model):
         super().__init__()
         projection_size = int(encoder.output.shape[-1])
         self.temperature = temperature
-        contrastive_augmentation = {"min_area": 0.25, "brightness": 0.6, "jitter": 0.2, "input_shape": input_shape}
-        self.contrastive_augmenter = get_augmenter(**contrastive_augmentation)
+        contrastive_augmentation = {
+            "brightness": 0.6,
+            "jitter": 0.2,
+            "input_shape": input_shape
+        }
+        # self.contrastive_augmenter = get_augmenter(**contrastive_augmentation)
         self.encoder = encoder
         # Non-linear MLP as projection head
         self.projection_head = keras.Sequential(
@@ -67,8 +70,6 @@ class ContrastiveModel(keras.Model):
             ],
             name="projection_head",
         )
-        # self.encoder.summary()
-        # self.projection_head.summary()
 
         self.contrastive_loss_tracker = keras.metrics.Mean(name="c_loss")
         self.contrastive_accuracy = keras.metrics.SparseCategoricalAccuracy(name="c_acc")
@@ -111,11 +112,11 @@ class ContrastiveModel(keras.Model):
 
         # Both labeled and unlabeled images are used, without labels
         # Each image is augmented twice, differently
-        augmented_images_1 = self.contrastive_augmenter(images_1, training=True)
-        augmented_images_2 = self.contrastive_augmenter(images_2, training=True)
+        # augmented_images_1 = self.contrastive_augmenter(images_1, training=True)
+        # augmented_images_2 = self.contrastive_augmenter(images_2, training=True)
         with tf.GradientTape() as tape:
-            features_1 = self.encoder(augmented_images_1, training=True)
-            features_2 = self.encoder(augmented_images_2, training=True)
+            features_1 = self.encoder(images_1, training=True)
+            features_2 = self.encoder(images_2, training=True)
             # The representations are passed through a projection mlp
             projections_1 = self.projection_head(features_1, training=True)
             projections_2 = self.projection_head(features_2, training=True)
@@ -135,21 +136,20 @@ class ContrastiveModel(keras.Model):
         return {m.name: m.result() for m in self.metrics}
 
     def call(self, inputs, training=None, mask=None):
-        inputs = self.contrastive_augmenter(inputs)
+        # inputs = self.contrastive_augmenter(inputs)
         z = self.encoder(inputs)
         z = self.projection_head(z)
         return z
 
-    # def test_step(self, data):
-        # labeled_images, labels = data
+    def test_step(self, data):
+        images_1, images_2 = data
 
-        # For testing the components are used with a training=False flag
-        # preprocessed_images = self.classification_augmenter(labeled_images, training=False)
-        # features = self.encoder(preprocessed_images, training=False)
-        #     class_logits = self.linear_probe(features, training=False)
-        #     probe_loss = self.probe_loss(labels, class_logits)
-        # self.probe_loss_tracker.update_state(probe_loss)
-        # self.probe_accuracy.update_state(labels, class_logits)
+        features_1 = self.encoder(images_1, training=True)
+        features_2 = self.encoder(images_2, training=True)
+        # The representations are passed through a projection mlp
+        projections_1 = self.projection_head(features_1, training=True)
+        projections_2 = self.projection_head(features_2, training=True)
+        contrastive_loss = self.contrastive_loss(projections_1, projections_2)
+        self.contrastive_loss_tracker.update_state(contrastive_loss)
 
-        # Only the probe metrics are logged at test time
-        # return {m.name: m.result() for m in self.metrics[2:]}
+        return {m.name: m.result() for m in self.metrics}

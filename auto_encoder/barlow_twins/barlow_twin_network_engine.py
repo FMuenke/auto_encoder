@@ -203,3 +203,13 @@ class BarlowTwin(tf.keras.Model):
     def call(self, inputs, training=None, mask=None):
         z = self.model(inputs)
         return z
+
+    def test_step(self, data):
+        # get the two augmentations from the batch
+        y_a, y_b = data
+
+        z_a, z_b = self.model(y_a, training=True), self.model(y_b, training=True)
+        loss = self.loss(z_a, z_b)
+        self.loss_tracker.update_state(loss)
+
+        return {"loss": self.loss_tracker.result()}

@@ -98,6 +98,12 @@ class Embedding:
         elif self.embedding_type == "direct_avg":
             self.activation = "none"
             bottleneck = self.add_pooling_op(x, "avg")
+        elif self.embedding_type == "direct_max":
+            self.activation = "none"
+            bottleneck = self.add_pooling_op(x, "max")
+        elif self.embedding_type == "direct_flatten":
+            self.activation = "none"
+            bottleneck = layers.Flatten()(x)
         elif self.embedding_type == "projection_avg":
             latent = self.add_pooling_op(x, "avg")
             w_decay = 0.0005

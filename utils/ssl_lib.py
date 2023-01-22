@@ -8,7 +8,7 @@ import tensorflow_addons as tfa
 from tensorflow import keras
 
 from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
+from sklearn.linear_model import LogisticRegression
 from sklearn import neighbors
 from sklearn.metrics import f1_score, accuracy_score, top_k_accuracy_score
 
@@ -53,9 +53,7 @@ class TfMlp:
             batch_size=200,
             epochs=10000,
             validation_data=(x_val, tf.one_hot(y_val, self.n_classes)),
-            callbacks=[
-                keras.callbacks.EarlyStopping(patience=1000, restore_best_weights=True)
-            ],
+            callbacks=[keras.callbacks.EarlyStopping(patience=1000, restore_best_weights=True)],
             verbose=0,
             # use_multiprocessing=False
         )
@@ -65,24 +63,21 @@ class TfMlp:
         y_pred = np.array(y_pred)
         return np.argmax(y_pred, axis=1)
 
-
-def get_logistic_regression_optimizer(n_labels):
-    if n_labels <= 400:
-        n_splits = 2
-    else:
-        n_splits = 3
-    clf = LogisticRegressionCV(n_jobs=-1, max_iter=100000, cv=n_splits)
-    return clf
+    def predict_proba(self, x):
+        y_pred = self.model.predict(x)
+        return np.array(y_pred)
 
 
 def eval_classifier(clf, clf_id, x_train, y_train, x_test, y_test):
     print("Fitting CLF: {}".format(clf_id))
     clf.fit(x_train, y_train)
-    y_pred = clf.predict(x_test)
-    f1 = f1_score(y_test, y_pred, average="weighted")
-    acc = accuracy_score(y_test, y_pred)
-    # acc_5 = top_k_accuracy_score(y_test, y_pred, k=5)
-    return f1, acc
+    y_pred = clf.predict_proba(x_test)
+
+    labels_list = [i for i in range(y_pred.shape[1])]
+    f1 = f1_score(y_test, np.argmax(y_pred, axis=1), average="weighted")
+    acc = accuracy_score(y_test, np.argmax(y_pred, axis=1))
+    acc_5 = top_k_accuracy_score(y_test, y_pred, k=5, labels=labels_list)
+    return f1, acc, acc_5
 
 
 def select_random_subset(x_train, y_train, n_labels):
@@ -118,18 +113,19 @@ def cls_test_run(x_train, y_train, x_test, y_test, n_labels, run_id):
         [LogisticRegression(max_iter=10000, n_jobs=-1), "LR"],
         [TfMlp(x_train.shape[1], 100, [512, 256], dropout_rate=0.75), "TF-MLP (512, 256) drp=0.75"],
         # [TfMlp(x_train.shape[1], 100, [1024], dropout_rate=0.75), "TF-MLP (1024) drp=0.75"],
-        [neighbors.NearestCentroid(), "NC"],
+        # [neighbors.NearestCentroid(), "NC"],
         [neighbors.KNeighborsClassifier(), "KNN"]
     ]
 
     data_frame = []
     x_train, y_train = select_random_subset_by_class(x_train, y_train, n_labels)
     for clf, clf_id in clf_list:
-        f1, acc = eval_classifier(clf, clf_id, x_train, y_train, x_test, y_test)
+        f1, acc, acc_5 = eval_classifier(clf, clf_id, x_train, y_train, x_test, y_test)
         data_frame.append({
             "clf": clf_id,
             "F1-Score": f1,
             "Accuracy": acc,
+            "Top 5 Accuracy": acc_5,
             "n_labels": n_labels,
             "run": run_id,
         })

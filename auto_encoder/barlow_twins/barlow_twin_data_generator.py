@@ -4,8 +4,8 @@ import tensorflow_addons as tfa
 import numpy as np
 import cv2
 
-from auto_encoder.util import prepare_input
-from auto_encoder.augmentations import Augmentations
+from auto_encoder.util import prepare_input_sim_clr
+from auto_encoder.augmentations import Augmentations, apply_crop
 
 
 class Augmentation(keras.layers.Layer):
@@ -302,17 +302,12 @@ class DataGenerator(keras.utils.Sequence):
         self.batch_size = batch_size
         self.tag_set = tag_set
         self.shuffle = shuffle
-        self.augmentations = Augmentations(
-            neutral_percentage=0.25,
-            noise=0.0,
+        self.crop_strength = 0.75
+        self.augmentations = augmentations
+        self.baseline_augmentations = Augmentations(
+            brightness=0.60,
+            channel_shift=0.2,
             flip_rotate90=1.0,
-            patch_masking=0.0,
-            patch_shuffling=0.0,
-            masking=0.0,
-            blurring=0.0,
-            patch_rotation=0.0,
-            warp=0.0,
-            crop=0.30
         )
 
         self.bt_augmentor = RandomAugmentor(self.image_size[0])
@@ -355,20 +350,21 @@ class DataGenerator(keras.utils.Sequence):
             img_1 = tag.load_x()
             img_2 = np.copy(img_1)
 
-            # img_1, _ = self.augmentations.apply(img_1, img_1)
-            # img_2, _ = self.augmentations.apply(img_2, img_2)
+            dummy_1 = np.zeros(img_1.shape)
+            dummy_2 = np.zeros(img_2.shape)
 
-            img_1 = cv2.resize(img_1, (int(self.image_size[1]), int(self.image_size[0])), interpolation=cv2.INTER_CUBIC)
-            img_2 = cv2.resize(img_2, (int(self.image_size[1]), int(self.image_size[0])), interpolation=cv2.INTER_CUBIC)
+            img_1, _ = apply_crop(img_1, dummy_1, percentage=np.random.randint(100 * self.crop_strength) / 100)
+            img_2, _ = apply_crop(img_2, dummy_2, percentage=np.random.randint(100 * self.crop_strength) / 100)
 
-            img_1 = np.array(self.bt_augmentor(img_1))
-            img_2 = np.array(self.bt_augmentor(img_2))
+            img_1, _ = self.baseline_augmentations.apply(img_1, dummy_1)
+            img_2, _ = self.baseline_augmentations.apply(img_2, dummy_2)
 
-            # cv2.imwrite("./test_image/aug_{}_1.png".format(i), img_1)
-            # cv2.imwrite("./test_image/aug_{}_2.png".format(i), img_2)
+            if self.augmentations is not None:
+                img_1, _ = self.augmentations.apply(img_1, dummy_1)
+                img_2, _ = self.augmentations.apply(img_2, dummy_2)
 
-            img_1 = prepare_input(img_1, self.image_size)
-            img_2 = prepare_input(img_2, self.image_size)
+            img_1 = prepare_input_sim_clr(img_1, self.image_size)
+            img_2 = prepare_input_sim_clr(img_2, self.image_size)
             x.append(img_1)
             y.append(img_2)
 

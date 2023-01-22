@@ -74,10 +74,9 @@ def augmenter(brightness, name, scale, input_shape):
 class NNCLR(keras.Model):
     def __init__(self, encoder, temperature, input_shape, queue_size=10000):
         super().__init__()
-        self.probe_accuracy = keras.metrics.SparseCategoricalAccuracy()
-        self.correlation_accuracy = keras.metrics.SparseCategoricalAccuracy()
-        self.contrastive_accuracy = keras.metrics.SparseCategoricalAccuracy()
-        self.probe_loss = keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+        self.correlation_accuracy = keras.metrics.SparseCategoricalAccuracy(name="r_acc")
+        self.contrastive_accuracy = keras.metrics.SparseCategoricalAccuracy(name="c_acc")
+        self.contrastive_loss_tracker = keras.metrics.Mean(name="c_loss")
 
         contrastive_augmenter = {
             "brightness": 0.5,
@@ -85,7 +84,6 @@ class NNCLR(keras.Model):
             "scale": (0.2, 1.0),
             "input_shape": input_shape,
         }
-        self.contrastive_augmenter = augmenter(**contrastive_augmenter)
         self.encoder = encoder
         projection_size = int(encoder.output.shape[-1])
         self.projection_head = keras.Sequential(
@@ -105,6 +103,14 @@ class NNCLR(keras.Model):
             ),
             trainable=False,
         )
+
+    @property
+    def metrics(self):
+        return [
+            self.contrastive_loss_tracker,
+            self.contrastive_accuracy,
+            self.correlation_accuracy
+        ]
 
     def nearest_neighbour(self, projections):
         support_similarities = tf.matmul(projections, self.feature_queue, transpose_b=True)
@@ -203,12 +209,10 @@ class NNCLR(keras.Model):
 
     def train_step(self, data):
         images_1, images_2 = data
-        augmented_images_1 = self.contrastive_augmenter(images_1)
-        augmented_images_2 = self.contrastive_augmenter(images_2)
 
         with tf.GradientTape() as tape:
-            features_1 = self.encoder(augmented_images_1)
-            features_2 = self.encoder(augmented_images_2)
+            features_1 = self.encoder(images_1)
+            features_2 = self.encoder(images_2)
             projections_1 = self.projection_head(features_1)
             projections_2 = self.projection_head(features_2)
             contrastive_loss = self.contrastive_loss(projections_1, projections_2)
@@ -222,27 +226,27 @@ class NNCLR(keras.Model):
                 self.encoder.trainable_weights + self.projection_head.trainable_weights,
             )
         )
+        self.contrastive_loss_tracker.update_state(contrastive_loss)
         self.update_contrastive_accuracy(features_1, features_2)
         self.update_correlation_accuracy(features_1, features_2)
 
-        return {
-            "c_loss": contrastive_loss,
-            "c_acc": self.contrastive_accuracy.result(),
-            "r_acc": self.correlation_accuracy.result(),
-        }
+        return {m.name: m.result() for m in self.metrics}
 
     def call(self, inputs, training=None, mask=None):
         z = self.encoder(inputs)
         p = self.projection_head(z)
         return p
 
-    # def test_step(self, data):
-        # labeled_images, labels = data
+    def test_step(self, data):
+        images_1, images_2 = data
 
-        # preprocessed_images = self.classification_augmenter(labeled_images, training=False)
-        # features = self.encoder(preprocessed_images, training=False)
-        # class_logits = self.linear_probe(features, training=False)
-        # probe_loss = self.probe_loss(labels, class_logits)
+        features_1 = self.encoder(images_1)
+        features_2 = self.encoder(images_2)
+        projections_1 = self.projection_head(features_1)
+        projections_2 = self.projection_head(features_2)
+        contrastive_loss = self.contrastive_loss(projections_1, projections_2)
+        self.contrastive_loss_tracker.update_state(contrastive_loss)
+        self.update_contrastive_accuracy(features_1, features_2)
+        self.update_correlation_accuracy(features_1, features_2)
 
-        # self.probe_accuracy.update_state(labels, class_logits)
-        # return {"p_loss": probe_loss, "p_acc": self.probe_accuracy.result()}
+        return {m.name: m.result() for m in self.metrics}

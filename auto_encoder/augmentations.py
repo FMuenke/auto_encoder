@@ -6,7 +6,7 @@ from skimage import transform as tf
 
 
 class ChannelShift:
-    def __init__(self, intensity, seed=2022):
+    def __init__(self, intensity, seed=np.random.randint(100)):
         self.name = "ChannelShift"
         assert 1 < intensity < 255, "Set the pixel values to be shifted (1, 255)"
         self.intensity = intensity
@@ -48,7 +48,7 @@ class Stripes:
 
 
 class Blurring:
-    def __init__(self, kernel=9, randomness=-1, seed=2022):
+    def __init__(self, kernel=9, randomness=-1, seed=np.random.randint(100)):
         self.name = "Blurring"
         if randomness == -1:
             randomness = kernel - 2
@@ -62,22 +62,6 @@ class Blurring:
         k = self.kernel + self.rng.integers(-self.randomness, self.randomness)
         img = cv2.blur(img.astype(np.float32), ksize=(k, k))
         return img.astype(np.uint8)
-
-
-class NeedsMoreJPG:
-    def __init__(self, percentage, randomness, seed=2022):
-        self.name = "NeedsMoreJPG"
-        self.percentage = percentage
-        self.randomness = randomness
-        self.seed = seed
-        self.rng = np.random.default_rng(seed)
-
-    def apply(self, img):
-        h, w = img.shape[:2]
-        p = self.percentage + self.rng.integers(-self.randomness, self.randomness)
-        img = cv2.resize(img, (int(w * p / 100), int(h * p / 100)), interpolation=cv2.INTER_NEAREST)
-        img = cv2.resize(img, (w, h), interpolation=cv2.INTER_NEAREST)
-        return img
 
 
 class SaltNPepper:
@@ -126,9 +110,24 @@ def apply_blur(img, lab, percentage):
     return img.astype(np.uint8), lab
 
 
-def apply_channel_shift(img):
-    noise = ChannelShift(intensity=16)
-    return noise.apply(img)
+def apply_channel_shift(img, lab, percentage):
+    noise = ChannelShift(intensity=int(256 * percentage))
+    return noise.apply(img), lab
+
+
+def apply_color_drop(img, lab, percentage):
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    img = np.expand_dims(img, axis=2)
+    img = np.concatenate([img, img, img], axis=2)
+    return img, lab
+
+
+def apply_brightness(img, lab, percentage):
+    img = img.astype(np.float32)
+    br_mat = np.random.choice([1, -1]) * np.ones(img.shape, dtype=np.float32) * percentage
+    img += br_mat*255
+    img = np.clip(img, 0, 255)
+    return img.astype(np.uint8), lab
 
 
 def apply_horizontal_flip(img, lab, percentage):
@@ -148,11 +147,16 @@ def apply_vertical_flip(img, lab, percentage):
 
 
 def apply_crop(img, lab, percentage=0.10):
+    if percentage <= 0.0:
+        return img, lab
     height, width, ch = img.shape
     percentage = np.sqrt(100 * 100 * (1 - percentage)) / 100
 
-    crop_height = np.max([int(percentage * height), 4])
-    crop_width = np.max([int(percentage * width), 4])
+    ar_h = np.random.choice([0.70, 0.80, 0.90, 1])
+    ar_w = np.random.choice([0.70, 0.80, 0.90, 1])
+
+    crop_height = np.max([int(percentage * height * ar_h), 4])
+    crop_width = np.max([int(percentage * width * ar_w), 4])
 
     y1_img = np.random.randint(height - crop_height)
     x1_img = np.random.randint(width - crop_width)
@@ -195,7 +199,7 @@ def apply_rotation_90(img, lab, percentage):
 def apply_tiny_rotation(img, lab, percentage):
     img = img.astype(np.float)
     lab = lab.astype(np.float)
-    rand_angle = np.random.randint(20) - 10
+    rand_angle = np.random.randint(int(90 * percentage)) - 10
     img = rotate(img, angle=rand_angle, mode="reflect")
     lab = rotate(lab, angle=rand_angle, mode="reflect")
     return img.astype(np.uint8), lab.astype(np.int)
@@ -330,15 +334,18 @@ def apply_imagine_patches(img, lab, n_patches=8, percentage=0.25):
 
 class Augmentations:
     def __init__(self,
-                 neutral_percentage=0.5,
+                 neutral_percentage=0.0,
                  masking=0.0,
                  cross_cut=0.0,
                  patch_rotation=0.0,
                  patch_shuffling=0.0,
                  blurring=0.0,
                  noise=0.0,
-                 flip_rotate90=1.0,
-                 crop=0.10,
+                 channel_shift=0.0,
+                 brightness=0.0,
+                 color_drop=0.0,
+                 flip_rotate90=0.0,
+                 crop=0.00,
                  patch_masking=0.0,
                  warp=0.0):
 
@@ -357,6 +364,9 @@ class Augmentations:
             {"name": "CROP", "function": apply_crop, "percentage": crop},
             {"name": "WARP", "function": apply_warp, "percentage": warp},
             {"name": "PATCH_MASKING", "function": apply_imagine_patches, "percentage": patch_masking},
+            {"name": "CHANNEL_SHIFT", "function": apply_channel_shift, "percentage": channel_shift},
+            {"name": "COLOR_DROP", "function": apply_color_drop, "percentage": color_drop},
+            {"name": "BRIGHTNESS", "function": apply_brightness, "percentage": brightness},
         ]
 
         self.active_tasks = [t for t in self.tasks if t["percentage"] > 0.0]
@@ -366,7 +376,7 @@ class Augmentations:
             return img, tar
         random.shuffle(self.active_tasks)
         for task_to_apply in self.active_tasks:
-            if np.random.randint(100) > self.neutral:
+            if np.random.randint(100)/100 < self.neutral:
                 continue
             percentage = np.random.randint(100 * task_to_apply["percentage"]) / 100
             if percentage == 0:
@@ -387,7 +397,6 @@ class EncoderTask:
                  patch_rotation=0.0,
                  patch_shuffling=0.0,
                  warp=0.0,
-                 black_hole=0.0,
                  blurring=0.0,
                  noise=0.0,
                  imagine_patches=0.0,
