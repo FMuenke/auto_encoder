@@ -45,13 +45,11 @@ def main(args_):
     cfg.opt["freeze"] = args_.freeze_backbone
 
     cfg.opt["augmentation"] = args_.augmentation
-    cfg.opt["augmentation_intensity"] = float(args_.augmentation_intensity)
     cfg.opt["embedding_size"] = int(args_.embedding_size)
     cfg.opt["embedding_type"] = args_.embedding_type
     cfg.opt["embedding_activation"] = args_.embedding_activation
     cfg.opt["drop_rate"] = float(args_.drop_rate)
     cfg.opt["dropout_structure"] = args_.dropout_structure
-    cfg.opt["embedding_noise"] = float(args_.embedding_noise)
 
     cfg.opt["type"] = args_.type
     cfg.opt["backbone"] = args_.backbone
@@ -82,12 +80,15 @@ def main(args_):
         aug = None
     elif cfg.opt["augmentation"] == "all":
         aug = Augmentations(
-            blurring=cfg.opt["augmentation_intensity"],
-            cross_cut=cfg.opt["augmentation_intensity"],
-            masking=cfg.opt["augmentation_intensity"],
-            patch_rotation=cfg.opt["augmentation_intensity"],
-            patch_shuffling=cfg.opt["augmentation_intensity"],
-            noise=cfg.opt["augmentation_intensity"],
+            neutral_percentage=0.85,
+            blurring=0.1,
+            masking=0.15,
+            patch_shuffling=0.15,
+            noise=0.20,
+            channel_shift=0.05,
+            brightness=0.10,
+            crop=0.20,
+            warp=0.05,
         )
     else:
         raise Exception("No Valid Task Specified.. {}".format(cfg.opt["task"]))
@@ -112,13 +113,11 @@ def parse_args():
     parser.add_argument("--weights", "-w", default="None", help="Path to pretrained weights")
     parser.add_argument("--freeze_backbone", "-freeze", type=bool, default=False, help="Path to pretrained weights")
     parser.add_argument("--augmentation", "-aug", default="None", help="Path to model")
-    parser.add_argument("--augmentation_intensity", "-intensity", default=0.0, help="Training Mode")
     parser.add_argument("--embedding_size", "-size", default=256, help="Training Mode")
     parser.add_argument("--embedding_type", "-type", default="glob_avg", help="Training Mode")
     parser.add_argument("--embedding_activation", "-activation", default="linear", help="Training Mode")
     parser.add_argument("--drop_rate", "-drop", default=0.0, help="Dropout during Embedding")
     parser.add_argument("--dropout_structure", "-drops", default="general", help="Dropout during Embedding")
-    parser.add_argument("--embedding_noise", "-noise", default=0.0, help="Gaussian Noise applied to embedding")
     parser.add_argument("--backbone", "-bb", default="residual", help="Auto Encoder Backbone")
     parser.add_argument("--depth", "-d", default=2, help="Backbone Depth")
     parser.add_argument("--resolution", "-r", default=16, help="Backbone Resolution")

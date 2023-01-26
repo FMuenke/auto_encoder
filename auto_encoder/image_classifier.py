@@ -8,9 +8,8 @@ import pickle
 from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping, CSVLogger
 
 
-from auto_encoder.residual import residual_classifier
-from auto_encoder.backbone.linear import linear_auto_encoder
-from auto_encoder.vision_transformer import vit_auto_encoder
+from auto_encoder.backbone.essentials import add_classification_head
+from auto_encoder.backbone.encoder import get_encoder
 from auto_encoder.data_generator import ClassificationDataGenerator
 
 from auto_encoder.util import check_n_make_dir
@@ -35,12 +34,8 @@ class ImageClassifier:
         self.embedding_activation = cfg.opt["embedding_activation"]
         self.drop_rate = cfg.opt["drop_rate"]
         self.dropout_structure = cfg.opt["dropout_structure"]
-        self.embedding_noise = cfg.opt["embedding_noise"]
         self.freeze = cfg.opt["freeze"]
-        if "scale" not in cfg.opt:
-            self.scale = 0
-        else:
-            self.scale = cfg.opt["scale"]
+        self.scale = cfg.opt["scale"]
 
         self.model = None
 
@@ -64,52 +59,28 @@ class ImageClassifier:
         data = np.expand_dims(data, axis=0)
         res = self.model.predict_on_batch(data)
         res = np.argmax(np.array(res))
-        return res
+        conf = np.max(res)
+        return res, conf
 
     def get_backbone(self):
-        if self.backbone in ["resnet", "residual"]:
-            x_in, output = residual_classifier(
-                input_shape=self.input_shape,
-                embedding_size=self.embedding_size,
-                embedding_type=self.embedding_type,
-                embedding_activation=self.embedding_activation,
-                depth=self.depth,
-                scale=self.scale,
-                resolution=self.resolution,
-                drop_rate=self.drop_rate,
-                dropout_structure=self.dropout_structure,
-                n_classes=len(self.class_mapping),
-            )
-        elif self.backbone in ["xception"]:
-            base_model = keras.applications.xception.Xception(
-                weights=None,
-                include_top=False,
-                pooling="avg",
-                input_shape=(self.input_shape[0], self.input_shape[1], 3),
-            )
-            x_in, output = base_model.input, base_model.output
-            output = layers.Dense(len(self.class_mapping), name="clf_output")(output)
-        elif self.backbone in ["resnet50"]:
-            base_model = keras.applications.resnet.ResNet50(
-                weights=None,
-                include_top=False,
-                pooling="avg",
-                input_shape=(self.input_shape[0], self.input_shape[1], 3),
-            )
-            x_in, output = base_model.input, base_model.output
-            output = layers.Dense(len(self.class_mapping), name="clf_output")(output)
-        elif self.backbone in ["efficientnetB0"]:
-            base_model = keras.applications.efficientnet.EfficientNetB0(
-                weights=None,
-                include_top=False,
-                pooling="avg",
-                input_shape=(self.input_shape[0], self.input_shape[1], 3),
-            )
-            x_in, output = base_model.input, base_model.output
-            output = layers.Dense(len(self.class_mapping), name="clf_output")(output)
-        else:
-            raise ValueError("{} Backbone was not recognised".format(self.backbone))
-
+        x_in, output = get_encoder(
+            backbone=self.backbone,
+            input_shape=self.input_shape,
+            embedding_size=self.embedding_size,
+            embedding_type=self.embedding_type,
+            embedding_activation=self.embedding_activation,
+            depth=self.depth,
+            scale=self.scale,
+            resolution=self.resolution,
+            drop_rate=self.drop_rate,
+            dropout_structure=self.dropout_structure,
+        )
+        output = add_classification_head(
+            output,
+            n_classes=len(self.class_mapping),
+            hidden_units=[],
+            dropout_rate=0.0
+        )
         return x_in, output
 
     def build(self, compile_model=True):

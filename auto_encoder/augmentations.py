@@ -116,6 +116,8 @@ def apply_channel_shift(img, lab, percentage):
 
 
 def apply_color_drop(img, lab, percentage):
+    if np.random.randint(100) / 100 > percentage:
+        return img, lab
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     img = np.expand_dims(img, axis=2)
     img = np.concatenate([img, img, img], axis=2)
@@ -131,6 +133,8 @@ def apply_brightness(img, lab, percentage):
 
 
 def apply_horizontal_flip(img, lab, percentage):
+    if np.random.randint(100) / 100 > percentage:
+        return img, lab
     img = cv2.flip(img, 1)
     lab = cv2.flip(lab, 1)
     if len(lab.shape) == 2:
@@ -139,6 +143,8 @@ def apply_horizontal_flip(img, lab, percentage):
 
 
 def apply_vertical_flip(img, lab, percentage):
+    if np.random.randint(100) / 100 > percentage:
+        return img, lab
     img = cv2.flip(img, 0)
     lab = cv2.flip(lab, 0)
     if len(lab.shape) == 2:
@@ -169,6 +175,10 @@ def apply_crop(img, lab, percentage=0.10):
 
 
 def apply_rotation_90(img, lab, percentage):
+
+    if np.random.randint(100) / 100 > percentage:
+        return img, lab
+
     angle = np.random.choice([0, 90, 180, 270])
 
     if angle == 270:

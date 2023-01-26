@@ -7,7 +7,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, CSVLogger
 
 from auto_encoder.sim_clr.sim_clr_data_generator import SimCLRDataGenerator
 from auto_encoder.auto_encoder import AutoEncoder
-from auto_encoder.backbone.residual import make_residual_encoder
+from auto_encoder.backbone.encoder import get_encoder
 from auto_encoder.sim_clr.sim_clr_network_engine import ContrastiveModel
 
 from auto_encoder.util import check_n_make_dir, prepare_input_sim_clr
@@ -23,29 +23,19 @@ class SimpleContrastiveLearning(AutoEncoder):
             self.temperature = cfg.opt["temperature"]
 
     def get_backbone(self):
-        if self.backbone in ["resnet", "residual"]:
-            input_layer, embedding = make_residual_encoder(
-                input_shape=self.input_shape,
-                embedding_size=self.embedding_size,
-                embedding_type=self.embedding_type,
-                embedding_activation=self.embedding_activation,
-                depth=self.depth,
-                scale=self.scale,
-                resolution=self.resolution,
-                drop_rate=self.drop_rate,
-                dropout_structure=self.dropout_structure
-            )
-            encoder = keras.Model(input_layer, embedding, name="encoder")
-        elif self.backbone == "resnet50":
-            encoder = keras.applications.resnet50.ResNet50(
-                weights=None,
-                include_top=False,
-                pooling="avg",
-                input_shape=(self.input_shape[0], self.input_shape[1], 3),
-            )
-        else:
-            raise ValueError("{} Backbone was not recognised".format(self.backbone))
-
+        input_layer, embedding = get_encoder(
+            backbone=self.backbone,
+            input_shape=self.input_shape,
+            embedding_size=self.embedding_size,
+            embedding_type=self.embedding_type,
+            embedding_activation=self.embedding_activation,
+            depth=self.depth,
+            scale=self.scale,
+            resolution=self.resolution,
+            drop_rate=self.drop_rate,
+            dropout_structure=self.dropout_structure
+        )
+        encoder = keras.Model(input_layer, embedding, name="encoder")
         return ContrastiveModel(
             encoder,
             temperature=self.temperature,

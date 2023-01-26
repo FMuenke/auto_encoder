@@ -1,4 +1,6 @@
 import os
+
+import numpy as np
 import tensorflow as tf
 import pandas as pd
 from tqdm import tqdm
@@ -10,7 +12,7 @@ from auto_encoder.util import save_dict, check_n_make_dir, load_dict
 
 import argparse
 
-from sklearn.metrics import classification_report, f1_score, accuracy_score
+from sklearn.metrics import classification_report, f1_score, accuracy_score, roc_auc_score
 
 print("TF VERSION: ", tf.__version__)
 
@@ -54,15 +56,26 @@ def main(args_):
     y_true = []
     y_pred = []
 
+    known_status = []
+    max_proba = []
+
     for i in tqdm(images):
         data = i.load_x()
         yi_true = i.load_y()
-        yi_pred = class_mapping_inv[clf.inference(data)]
-        y_true.append(yi_true)
-        y_pred.append(yi_pred)
+        yi_pred_cls_id, yi_pred_cls_conf = clf.inference(data)
+        yi_pred = class_mapping_inv[yi_pred_cls_id]
+
+        max_proba.append(yi_pred_cls_conf)
+        if yi_true not in class_mapping:
+            known_status.append(0)
+        else:
+            known_status.append(1)
+            # only recognize classification when part of class mapping, otherwise just evaluate for outlier rejection
+            y_true.append(yi_true)
+            y_pred.append(yi_pred)
 
     with open(os.path.join(mf, "clf-report.txt"), "w") as f:
-        f.write(classification_report(y_true, y_pred))
+        f.write(classification_report(y_true, y_pred, zero_division=0))
 
     results_df = pd.DataFrame([{
         "clf": "cnn",
@@ -74,6 +87,15 @@ def main(args_):
     results_df.to_csv(os.path.join(mf, "classifier_results.csv"))
 
     print(results_df)
+
+    if len(np.unique(known_status)) == 2:
+        print("[INFO] Unknowns in the data set")
+        outlier_results = pd.DataFrame([{
+            "clf": "cnn",
+            "ROC-AUC-SCORE": roc_auc_score(known_status, max_proba)
+        }])
+        outlier_results.to_csv(os.path.join(mf, "cnn_outlier_removal.csv"))
+        print(outlier_results)
 
 
 def parse_args():

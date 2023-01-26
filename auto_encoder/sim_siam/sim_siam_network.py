@@ -7,8 +7,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, CSVLogger
 
 from auto_encoder.sim_siam.sim_siam_data_generator import DataGenerator
 from auto_encoder.auto_encoder import AutoEncoder
-from auto_encoder.backbone.residual import make_residual_encoder
-from auto_encoder.backbone.resnet import resnet_encoder
+from auto_encoder.backbone.encoder import get_encoder
 from auto_encoder.sim_siam.sim_siam_network_engine import SimSiamEngine
 
 from auto_encoder.util import check_n_make_dir, prepare_input
@@ -26,41 +25,19 @@ class SimpleSiameseNetwork(AutoEncoder):
         self.optimizer = keras.optimizers.SGD(lr_decayed_fn, momentum=0.6)
 
     def get_backbone(self):
-        if self.backbone in ["resnet", "residual"]:
-            input_layer, x = make_residual_encoder(
-                input_shape=self.input_shape,
-                embedding_size=self.embedding_size,
-                embedding_type=self.embedding_type,
-                embedding_activation=self.embedding_activation,
-                depth=self.depth,
-                scale=self.scale,
-                resolution=self.resolution,
-                drop_rate=self.drop_rate,
-                dropout_structure=self.dropout_structure
-            )
-        elif self.backbone == "resnet18":
-            input_layer, x = resnet_encoder(
-                input_shape=self.input_shape,
-                embedding_size=self.embedding_size,
-                embedding_type=self.embedding_type,
-                embedding_activation=self.embedding_activation,
-                n_blocks=18,
-                drop_rate=self.drop_rate,
-                dropout_structure=self.dropout_structure
-            )
-        elif self.backbone == "resnet2":
-            input_layer, x = resnet_encoder(
-                input_shape=self.input_shape,
-                embedding_size=self.embedding_size,
-                embedding_type=self.embedding_type,
-                embedding_activation=self.embedding_activation,
-                n_blocks=2,
-                drop_rate=self.drop_rate,
-                dropout_structure=self.dropout_structure
-            )
-        else:
-            raise ValueError("{} Backbone was not recognised".format(self.backbone))
-        encoder = keras.Model(input_layer, x, name="encoder")
+        input_layer, embedding = get_encoder(
+            backbone=self.backbone,
+            input_shape=self.input_shape,
+            embedding_size=self.embedding_size,
+            embedding_type=self.embedding_type,
+            embedding_activation=self.embedding_activation,
+            depth=self.depth,
+            scale=self.scale,
+            resolution=self.resolution,
+            drop_rate=self.drop_rate,
+            dropout_structure=self.dropout_structure
+        )
+        encoder = keras.Model(input_layer, embedding, name="encoder")
         return SimSiamEngine(encoder)
 
     def encode(self, data):

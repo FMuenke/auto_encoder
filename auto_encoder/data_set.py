@@ -72,6 +72,8 @@ def sample_images_by_class(images, n_samples, class_mapping):
     remaining_images = []
     for i in images:
         cls = i.load_y()
+        if cls not in images_to_sample:
+            continue
         if images_to_sample[cls] > 0:
             sampled_images.append(i)
             images_to_sample[cls] -= 1

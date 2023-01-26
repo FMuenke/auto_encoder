@@ -19,7 +19,6 @@ class Config:
             "optimizer": "adam",
             "batch_size": 128,
             # "init_learning_rate": 1e-3,
-            "input_shape": [32, 32, 3],
             "tf-version": tf.__version__,
         }
 
@@ -59,15 +58,13 @@ def main(args_):
     cfg.opt["freeze"] = args_.freeze_backbone
 
     cfg.opt["augmentation"] = args_.augmentation
-    cfg.opt["augmentation_intensity"] = float(args_.augmentation_intensity)
     cfg.opt["drop_rate"] = float(args_.drop_rate)
     cfg.opt["dropout_structure"] = args_.dropout_structure
-    cfg.opt["embedding_noise"] = float(args_.embedding_noise)
 
     class_mapping = load_dict(os.path.join(df, "class_mapping.json"))
 
     clf = ImageClassifier(mf, cfg, class_mapping)
-    clf.build(True)
+    clf.build(compile_model=True)
 
     ds.load()
     if cfg.opt["n_labels"] > 0:
@@ -82,13 +79,15 @@ def main(args_):
         aug = None
     elif cfg.opt["augmentation"] == "all":
         aug = Augmentations(
-            blurring=cfg.opt["augmentation_intensity"],
-            cross_cut=cfg.opt["augmentation_intensity"],
-            black_hole=cfg.opt["augmentation_intensity"],
-            masking=cfg.opt["augmentation_intensity"],
-            patch_rotation=cfg.opt["augmentation_intensity"],
-            patch_shuffling=cfg.opt["augmentation_intensity"],
-            noise=cfg.opt["augmentation_intensity"],
+            neutral_percentage=0.85,
+            blurring=0.1,
+            masking=0.15,
+            patch_shuffling=0.15,
+            noise=0.20,
+            channel_shift=0.05,
+            brightness=0.10,
+            crop=0.20,
+            warp=0.05,
         )
     else:
         raise Exception("No Valid Task Specified.. {}".format(cfg.opt["task"]))
@@ -107,14 +106,12 @@ def parse_args():
         help="Path to directory with dataset",
     )
     parser.add_argument("--model", "-m", help="Path to model")
-    parser.add_argument("--auto_encoder", "-ae", help="Path to pretrained weights")
+    parser.add_argument("--pretrained", "-pre", help="Path to pretrained model")
     parser.add_argument("--backbone", "-bb", help="Overwrite Backbone!")
     parser.add_argument("--freeze_backbone", "-freeze", type=bool, default=False, help="Path to pretrained weights")
     parser.add_argument("--augmentation", "-aug", default="None", help="Path to model")
-    parser.add_argument("--augmentation_intensity", "-intensity", default=0.0, help="Training Mode")
     parser.add_argument("--drop_rate", "-drop", default=0.0, help="Dropout during Embedding")
     parser.add_argument("--dropout_structure", "-drops", default="general", help="Dropout during Embedding")
-    parser.add_argument("--embedding_noise", "-noise", default=0.0, help="Gaussian Noise applied to embedding")
     parser.add_argument("--n_labels", "-n", default=0, help="Number of Samples to train with")
     parser.add_argument("--learning_rate", "-lr", default=0.001, help="Initial Learning Rate")
     return parser.parse_args()

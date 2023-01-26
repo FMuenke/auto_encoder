@@ -2,12 +2,6 @@ import os
 import numpy as np
 import pandas as pd
 
-
-import tensorflow as tf
-import tensorflow_addons as tfa
-from tensorflow import keras
-
-from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn import neighbors
 from sklearn.metrics import f1_score, accuracy_score, top_k_accuracy_score
@@ -15,57 +9,7 @@ from sklearn.metrics import f1_score, accuracy_score, top_k_accuracy_score
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-
-class TfMlp:
-    def __init__(self, input_dim, n_classes, layer_dims, train=True, dropout_rate=0.25):
-        self.n_classes = n_classes
-        self.dropout_rate = dropout_rate
-        self.learning_rate = 10e-5
-
-        x_in = keras.layers.Input(shape=input_dim)
-
-        x = self.add_mlp(x_in, layer_dims)
-        x = keras.layers.Dense(n_classes, kernel_regularizer="l2")(x)
-        y = keras.layers.Softmax()(x)
-
-        self.model = keras.models.Model(inputs=x_in, outputs=y)
-        if train:
-            self.model.compile(
-                optimizer=tfa.optimizers.AdamW(learning_rate=self.learning_rate, weight_decay=self.learning_rate*0.1),
-                loss="categorical_crossentropy",
-                metrics=[
-                    "accuracy",
-                    keras.metrics.TopKCategoricalAccuracy(k=5, name='top_5_categorical_accuracy')
-                ]
-            )
-
-    def add_mlp(self, x, hidden_units):
-        for units in hidden_units:
-            x = keras.layers.Dense(units, activation=tf.nn.gelu)(x)
-            x = keras.layers.Dropout(self.dropout_rate)(x)
-        return x
-
-    def fit(self, x, y):
-        x_trn, x_val, y_trn, y_val = train_test_split(x, y, stratify=y, test_size=0.25)
-        self.model.fit(
-            x_trn,
-            tf.one_hot(y_trn, self.n_classes),
-            batch_size=200,
-            epochs=10000,
-            validation_data=(x_val, tf.one_hot(y_val, self.n_classes)),
-            callbacks=[keras.callbacks.EarlyStopping(patience=1000, restore_best_weights=True)],
-            verbose=0,
-            # use_multiprocessing=False
-        )
-
-    def predict(self, x):
-        y_pred = self.model.predict(x)
-        y_pred = np.array(y_pred)
-        return np.argmax(y_pred, axis=1)
-
-    def predict_proba(self, x):
-        y_pred = self.model.predict(x)
-        return np.array(y_pred)
+from utils.mlp_classifier import TfMlp
 
 
 def eval_classifier(clf, clf_id, x_train, y_train, x_test, y_test):
@@ -99,7 +43,11 @@ def select_random_subset_by_class(x_train, y_train, n_labels):
     for u_cls in u_classes:
         x_class = x_train[y_train == u_cls, :]
         y_class = y_train[y_train == u_cls]
-        x_class, y_class = select_random_subset(x_class, y_class, n_labels_per_class)
+        if y_class.shape[0] > n_labels_per_class:
+            x_class, y_class = select_random_subset(x_class, y_class, n_labels_per_class)
+        else:
+            print("[WARNING] Not enough labels ({}) in class to sample {} instances".format(
+                y_class.shape[0], n_labels_per_class))
         x_sampled.append(x_class)
         y_sampled.append(y_class)
 
@@ -136,7 +84,10 @@ def cls_test_run(x_train, y_train, x_test, y_test, n_labels, run_id):
 def eval_semi_supervised_classification(x_train, y_train, x_test, y_test, save_path, direct_features):
     data_frame = []
 
-    for n_labels in [65*4, 65*8, 65*20, 65*40]:
+    u_classes = np.unique(y_train)
+    n_classes = len(u_classes)
+
+    for n_labels in [n_classes*4, n_classes*10, n_classes*20, n_classes*40, n_classes*100]:
         for i in range(1):
             data_frame_p = cls_test_run(x_train, y_train, x_test, y_test, n_labels, i)
             data_frame.append(data_frame_p)

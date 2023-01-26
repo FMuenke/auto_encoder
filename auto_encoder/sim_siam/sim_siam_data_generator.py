@@ -71,8 +71,9 @@ class DataGenerator(keras.utils.Sequence):
         self.augmentations = augmentations
         self.baseline_augmentations = Augmentations(
             brightness=0.60,
-            channel_shift=0.2,
-            flip_rotate90=1.0,
+            channel_shift=0.20,
+            color_drop=0.20,
+            flip_rotate90=0.50,
         )
         self.indexes = np.arange(len(self.tag_set))
         self.on_epoch_end()

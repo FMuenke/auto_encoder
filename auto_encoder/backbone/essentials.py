@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow.keras import layers
 
 
-def add_classification_head(x, n_classes, hidden_units=[2024, 1024], dropout_rate=0.75):
+def add_classification_head(x, n_classes, hidden_units, dropout_rate=0.75):
     for i, units in enumerate(hidden_units):
         x = layers.Dense(units, activation=tf.nn.gelu, name="clf_{}".format(i))(x)
         x = layers.Dropout(dropout_rate)(x)

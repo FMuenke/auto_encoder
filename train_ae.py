@@ -6,7 +6,7 @@ from auto_encoder.sim_siam.sim_siam_network import SimpleSiameseNetwork
 from auto_encoder.barlow_twins.barlow_twin_network import BarlowTwinNetwork
 from auto_encoder.sim_clr.sim_clr_network import SimpleContrastiveLearning
 from auto_encoder.nn_clr.nn_clr_network import NearestNeighbourCLRNetwork
-from auto_encoder.variational_auto_encoder import VariationalAutoEncoder
+from auto_encoder.vae.variational_auto_encoder import VariationalAutoEncoder
 
 from auto_encoder.augmentations import EncoderTask
 

@@ -8,13 +8,11 @@ from sklearn.decomposition import PCA
 from sklearn.covariance import EllipticEnvelope
 from sklearn.neural_network import MLPClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier, IsolationForest, ExtraTreesClassifier
+from sklearn.ensemble import RandomForestClassifier, IsolationForest
 from sklearn.neighbors import LocalOutlierFactor, KNeighborsClassifier
-from sklearn.gaussian_process import GaussianProcessClassifier, kernels
 from sklearn.metrics import f1_score, roc_auc_score
 
-import matplotlib.pyplot as plt
-import seaborn as sns
+from utils.mlp_classifier import TfMlp
 
 
 def eval_classifier_outlier_removal(clf, clf_id, x_train, y_train, x_test, y_test, data_frame_test):
@@ -22,7 +20,7 @@ def eval_classifier_outlier_removal(clf, clf_id, x_train, y_train, x_test, y_tes
     print("Fitting CLF: {}".format(clf_id))
     clf.fit(x_train, y_train)
     y_cls_only = clf.predict(x_test[y_test != 0, :])
-    f1 = f1_score(y_test[y_test != 0], y_cls_only)
+    f1 = f1_score(y_test[y_test != 0], y_cls_only, average="macro")
     s += "[{} - F1-SCORE] {}\n".format(clf_id, f1)
     proba = clf.predict_proba(x_test)
     max_proba = np.max(proba, axis=1)
@@ -41,38 +39,14 @@ def eval_outlier_detector(ood, ood_id, x_train, x_test, data_frame_test):
     return s, auroc
 
 
-def plot_feature_space(x_train, x_test, data_frame_test, save_path):
-    print("[INFO] PCA of feature space:")
-    projection = PCA(n_components=4)
-    projection.fit(x_train)
-
-    x_trans_test = projection.transform(x_test)
-    plt_df = pd.DataFrame({
-        "x1": x_trans_test[:, 0],
-        "x2": x_trans_test[:, 1],
-        "x3": x_trans_test[:, 2],
-        "x4": x_trans_test[:, 3],
-        "status": data_frame_test["status"],
-        "class_name": data_frame_test["class_name"],
-    })
-    sns.pairplot(data=plt_df, vars=["x1", "x2", "x3", "x4"], hue="class_name", kind="kde")
-    plt.savefig(os.path.join(save_path, "pca-dist.png"))
-    plt.close()
-
-
 def eval_outlier_removal(x_train, y_train, x_test, y_test, data_frame_test, save_path):
     s = ""
     s += "[INFO] CLASSIFICATION\n"
 
     clf_list = [
-        [RandomForestClassifier(n_jobs=-1, n_estimators=50), "RANDOM FORREST (50) CLASSIFIER"],
-        [RandomForestClassifier(n_jobs=-1), "RANDOM FORREST (100) CLASSIFIER"],
         [RandomForestClassifier(n_jobs=-1, n_estimators=200), "RANDOM FORREST (200) CLASSIFIER"],
-        [GaussianProcessClassifier((1.0 * kernels.RBF(1.0)), n_jobs=-1), "GAUSSIAN PROCESS CLASSIFIER"],
-        [MLPClassifier(), "MLP (100) CLASSIFIER"],
-        [MLPClassifier(hidden_layer_sizes=(256, 128, )), "MLP (256, 128) CLASSIFIER"],
+        [TfMlp(x_train.shape[1], 100, [512, 256], dropout_rate=0.75), "TF-MLP (512, 256) drp=0.75"],
         [KNeighborsClassifier(n_jobs=-1, n_neighbors=5), "KNN (5) CLASSIFIER"],
-        [KNeighborsClassifier(n_jobs=-1, n_neighbors=15), "KNN (15) CLASSIFIER"],
     ]
     data = []
     for clf, clf_id in clf_list:
@@ -97,10 +71,6 @@ def eval_outlier_removal(x_train, y_train, x_test, y_test, data_frame_test, save
         s += s_ood
 
     print(s)
-    with open(os.path.join(save_path, "outlier-results.txt"), "w") as f:
-        f.write(s)
 
     data_frame = pd.DataFrame(data)
     data_frame.to_csv(os.path.join(save_path, "outlier-results.csv"))
-
-    plot_feature_space(x_train, x_test, data_frame_test, save_path)

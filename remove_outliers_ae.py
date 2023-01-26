@@ -4,9 +4,13 @@ import argparse
 import numpy as np
 from auto_encoder.data_set import DataSet
 from auto_encoder.auto_encoder import AutoEncoder
-from auto_encoder.variational_auto_encoder import VariationalAutoEncoder
+from auto_encoder.vae.variational_auto_encoder import VariationalAutoEncoder
+from auto_encoder.sim_clr.sim_clr_network import SimpleContrastiveLearning
+from auto_encoder.sim_siam.sim_siam_network import SimpleSiameseNetwork
+from auto_encoder.nn_clr.nn_clr_network import NearestNeighbourCLRNetwork
+from auto_encoder.barlow_twins.barlow_twin_network import BarlowTwinNetwork
 
-from auto_encoder.util import save_dict, load_dict
+from auto_encoder.util import load_dict
 
 import pandas as pd
 from utils.outlier_removal import eval_outlier_removal
@@ -64,51 +68,47 @@ def load_data_set(model, path_to_data, known_classes, only_known_classes):
     return data_x, data_y, data_frame
 
 
-def get_data_sets(ds_path_train, ds_path_test, model_path):
+def get_data_sets(ds_path, model_path):
+    ds_path_train = os.path.join(ds_path, "train")
+    ds_path_test = os.path.join(ds_path, "test")
+
+    class_mapping = load_dict(os.path.join(ds_path, "class_mapping.json"))
+
     cfg = Config()
     if os.path.isfile(os.path.join(model_path, "opt.json")):
         cfg.opt = load_dict(os.path.join(model_path, "opt.json"))
 
-    if "type" in cfg.opt:
-        if cfg.opt["type"] == "variational-autoencoder":
-            ae = VariationalAutoEncoder(model_path, cfg)
-            ae.build(add_decoder=False)
-        elif cfg.opt["type"] == "variational-autoencoder":
-            ae = AutoEncoder(model_path, cfg)
-            ae.build(add_decoder=False)
-        else:
-            raise Exception("UNKNOWN TYPE: {}".format(cfg.opt["type"]))
-    else:
+    if cfg.opt["type"] == "variational-autoencoder":
+        ae = VariationalAutoEncoder(model_path, cfg)
+        ae.build(compile_model=False, add_decoder=False)
+    elif cfg.opt["type"] == "autoencoder":
         ae = AutoEncoder(model_path, cfg)
-        ae.build(add_decoder=False)
+        ae.build(compile_model=False, add_decoder=False)
+    elif cfg.opt["type"] == "simsiam":
+        ae = SimpleSiameseNetwork(model_path, cfg)
+        ae.build(compile_model=False, add_decoder=False)
+    elif cfg.opt["type"] == "barlowtwins":
+        ae = BarlowTwinNetwork(model_path, cfg)
+        ae.build(compile_model=False, add_decoder=False)
+    elif cfg.opt["type"] == "simclr":
+        ae = SimpleContrastiveLearning(model_path, cfg)
+        ae.build(compile_model=False, add_decoder=False)
+    elif cfg.opt["type"] == "nnclr":
+        ae = NearestNeighbourCLRNetwork(model_path, cfg)
+        ae.build(compile_model=False, add_decoder=False)
+    else:
+        raise Exception("UNKNOWN TYPE: {}".format(cfg.opt["type"]))
 
-    known_classes = ["manhole", "stormdrain"]
-
-    x_train, y_train, data_frame_train = load_data_set(ae, ds_path_train, known_classes, only_known_classes=True)
-    np.save(os.path.join(model_path, "x_train.npy"), x_train)
-    np.save(os.path.join(model_path, "y_train.npy"), y_train)
-    save_dict(data_frame_train, os.path.join(model_path, "data_frame_train.json"))
-
-    x_test, y_test, data_frame_test = load_data_set(ae, ds_path_test, known_classes, only_known_classes=False)
-    np.save(os.path.join(model_path, "x_test.npy"), x_test)
-    np.save(os.path.join(model_path, "y_test.npy"), y_test)
-    save_dict(data_frame_test, os.path.join(model_path, "data_frame_test.json"))
+    x_train, y_train, data_frame_train = load_data_set(ae, ds_path_train, class_mapping, only_known_classes=True)
+    x_test, y_test, data_frame_test = load_data_set(ae, ds_path_test, class_mapping, only_known_classes=False)
+    return x_train, y_train, data_frame_train, x_test, y_test, data_frame_test
 
 
 def main(args_):
     df = args_.dataset_folder
-    tf = args_.testset_folder
     model_path = args_.model
 
-    get_data_sets(df, tf, model_path)
-
-    x_train = np.load(os.path.join(model_path, "x_train.npy"))
-    y_train = np.load(os.path.join(model_path, "y_train.npy"))
-    data_frame_train = load_dict(os.path.join(model_path, "data_frame_train.json"))
-
-    x_test = np.load(os.path.join(model_path, "x_test.npy"))
-    y_test = np.load(os.path.join(model_path, "y_test.npy"))
-    data_frame_test = load_dict(os.path.join(model_path, "data_frame_test.json"))
+    x_train, y_train, data_frame_train, x_test, y_test, data_frame_test = get_data_sets(df, model_path)
 
     data_frame_train = pd.DataFrame(data_frame_train)
     data_frame_test = pd.DataFrame(data_frame_test)
@@ -127,11 +127,6 @@ def parse_args():
         "--model",
         "-m",
         help="Path to model",
-    )
-    parser.add_argument(
-        "--testset_folder",
-        "-tf",
-        help="Path to directory with dataset",
     )
     return parser.parse_args()
 

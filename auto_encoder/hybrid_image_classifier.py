@@ -9,7 +9,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, Early
 
 
 from auto_encoder.auto_encoder import AutoEncoder
-from auto_encoder.essentials import add_classification_head
+from auto_encoder.backbone.essentials import add_classification_head
 from auto_encoder.data_generator import HybridDataGenerator
 
 from auto_encoder.util import check_n_make_dir
@@ -30,7 +30,8 @@ class HybridImageClassifier(AutoEncoder):
         res = self.model.predict_on_batch(data)
         res = np.array(res[0])[0, :]
         res = np.argmax(res)
-        return res
+        conf = np.max(res)
+        return res, conf
 
     def encode(self, data):
         data = prepare_input(data, self.input_shape)
