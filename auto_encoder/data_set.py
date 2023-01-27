@@ -92,6 +92,14 @@ class DataSet:
         self.images = load_folder(self.path)
         print("[INFO] Found: {} Images".format(len(self.images)))
 
+    def count(self, class_mapping):
+        counts = {c: 0 for c in class_mapping}
+        for i in self.images:
+            cls = i.load_y()
+            if cls in counts:
+                counts[cls] += 1
+        return counts
+
     def get_data(self, split=0.0):
         if split == 0:
             return self.images

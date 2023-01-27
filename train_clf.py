@@ -1,5 +1,6 @@
 import os
 import shutil
+import numpy as np
 import tensorflow as tf
 from auto_encoder.data_set import DataSet, sample_images_by_class
 from auto_encoder.image_classifier import ImageClassifier
@@ -43,6 +44,7 @@ def main(args_):
     cfg.opt["n_labels"] = int(args_.n_labels)
     cfg.opt["init_learning_rate"] = float(args_.learning_rate)
     cfg.opt["freeze"] = args_.freeze_backbone
+    cfg.opt["input_shape"] = [int(args_.input_size), int(args_.input_size), 3]
 
     cfg.opt["augmentation"] = args_.augmentation
     cfg.opt["embedding_size"] = int(args_.embedding_size)
@@ -57,7 +59,7 @@ def main(args_):
     cfg.opt["depth"] = int(args_.depth)
     cfg.opt["scale"] = int(args_.scale)
     cfg.opt["asymmetrical"] = bool(args_.asymmetrical)
-    cfg.opt["skip"] = bool(args_.skip)
+    cfg.opt["batch_size"] = int(args_.batch_size)
 
     class_mapping = load_dict(os.path.join(df, "class_mapping.json"))
 
@@ -68,13 +70,19 @@ def main(args_):
     clf.build(True)
 
     ds.load()
+    counts = ds.count(class_mapping)
+    for c in counts:
+        print("[INFO] {}: {}".format(c, counts[c]))
     if cfg.opt["n_labels"] > 0:
         images = ds.get_data()
-        train_images, remaining_images = sample_images_by_class(images, int(cfg.opt["n_labels"] * 0.8), class_mapping)
-        test_images, _ = sample_images_by_class(remaining_images, int(cfg.opt["n_labels"] * 0.2), class_mapping)
+        train_images, remaining_images = sample_images_by_class(images, int(cfg.opt["n_labels"] * 0.80), class_mapping)
+        test_images, _ = sample_images_by_class(remaining_images, int(cfg.opt["n_labels"] * 0.10), class_mapping)
     else:
         images = ds.get_data()
-        train_images, test_images = sample_images_by_class(images, int(len(images) * 0.8), class_mapping)
+        min_nb = np.min([counts[c] for c in counts])
+        min_nb = min_nb * len(class_mapping)
+
+        test_images, train_images = sample_images_by_class(images, int(min_nb * 0.10), class_mapping)
 
     if cfg.opt["augmentation"] == "None":
         aug = None
@@ -107,9 +115,9 @@ def parse_args():
         help="Path to directory with dataset",
     )
     parser.add_argument("--model", "-m", help="Path to model")
+    parser.add_argument("--input_size", "-in", default=32, help="Path to model")
     parser.add_argument("--type", "-ty", default="", help="Model Type [cnn / hybrid]")
     parser.add_argument("--asymmetrical", "-asym", default=False, type=bool)
-    parser.add_argument("--skip", "-sk", default=False, type=bool)
     parser.add_argument("--weights", "-w", default="None", help="Path to pretrained weights")
     parser.add_argument("--freeze_backbone", "-freeze", type=bool, default=False, help="Path to pretrained weights")
     parser.add_argument("--augmentation", "-aug", default="None", help="Path to model")
@@ -124,6 +132,7 @@ def parse_args():
     parser.add_argument("--scale", "-s", default=0, help="Backbone Scale")
     parser.add_argument("--n_labels", "-n", default=0, help="Number of Samples to train with")
     parser.add_argument("--learning_rate", "-lr", default=0.001, help="Initial Learning Rate")
+    parser.add_argument("--batch_size", "-batch", default=128, help="Batch Size used for training")
     return parser.parse_args()
 
 

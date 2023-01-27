@@ -1,6 +1,7 @@
 import os
 import shutil
 import tensorflow as tf
+import numpy as np
 from auto_encoder.data_set import DataSet, sample_images_by_class
 from auto_encoder.image_classifier import ImageClassifier
 
@@ -67,13 +68,17 @@ def main(args_):
     clf.build(compile_model=True)
 
     ds.load()
+    counts = ds.count(class_mapping)
+    for c in counts:
+        print("[INFO] {}: {}".format(c, counts[c]))
     if cfg.opt["n_labels"] > 0:
         images = ds.get_data()
-        train_images, remaining_images = sample_images_by_class(images, int(cfg.opt["n_labels"] * 0.8), class_mapping)
-        test_images, _ = sample_images_by_class(remaining_images, int(cfg.opt["n_labels"] * 0.2), class_mapping)
+        train_images, remaining_images = sample_images_by_class(images, int(cfg.opt["n_labels"] * 0.80), class_mapping)
+        test_images, _ = sample_images_by_class(remaining_images, int(cfg.opt["n_labels"] * 0.10), class_mapping)
     else:
         images = ds.get_data()
-        train_images, test_images = sample_images_by_class(images, int(len(images) * 0.8), class_mapping)
+        min_nb = np.min([counts[c] for c in counts])
+        min_nb = min_nb * len(class_mapping)
 
     if cfg.opt["augmentation"] == "None":
         aug = None
