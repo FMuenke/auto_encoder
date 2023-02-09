@@ -1,3 +1,5 @@
+import os.path
+
 import tensorflow as tf
 import tensorflow_addons as tfa
 from tensorflow import keras
@@ -57,3 +59,8 @@ class TfMlp:
     def predict_proba(self, x):
         y_pred = self.model.predict(x)
         return np.array(y_pred)
+
+    def save(self, path_to_store):
+        if os.path.isdir(path_to_store):
+            path_to_store = os.path.join(path_to_store, "mlp_weights.hdf5")
+        self.model.save(path_to_store)

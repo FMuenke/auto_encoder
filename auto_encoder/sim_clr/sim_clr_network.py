@@ -5,6 +5,7 @@ import tensorflow_addons as tfa
 from tensorflow import keras
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, CSVLogger
 
+from auto_encoder.augmentations import apply_center_crop
 from auto_encoder.sim_clr.sim_clr_data_generator import SimCLRDataGenerator
 from auto_encoder.auto_encoder import AutoEncoder
 from auto_encoder.backbone.encoder import get_encoder
@@ -43,6 +44,7 @@ class SimpleContrastiveLearning(AutoEncoder):
         )
 
     def encode(self, data):
+        data = apply_center_crop(data)
         data = prepare_input_sim_clr(data, self.input_shape)
         data = np.expand_dims(data, axis=0)
         res = self.model.predict_on_batch(data)

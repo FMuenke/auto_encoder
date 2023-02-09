@@ -1,5 +1,6 @@
 import os
 import tensorflow as tf
+import shutil
 from auto_encoder.data_set import DataSet
 from auto_encoder.auto_encoder import AutoEncoder
 from auto_encoder.sim_siam.sim_siam_network import SimpleSiameseNetwork
@@ -32,6 +33,15 @@ def main(args_):
     mf = args_.model
     df = args_.dataset_folder
     ds = DataSet(df)
+
+    pretrained_weights_path = args_.weights
+    if pretrained_weights_path is not None:
+        if os.path.isfile(pretrained_weights_path):
+            check_n_make_dir(mf)
+            shutil.copy(
+                pretrained_weights_path,
+                os.path.join(mf, "ae-weights-final.hdf5")
+            )
 
     cfg = Config()
     cfg.opt["type"] = args_.type
@@ -112,6 +122,7 @@ def parse_args():
         help="Path to directory with dataset",
     )
     parser.add_argument("--model", "-m", help="Path to model")
+    parser.add_argument("--weights", "-w", help="Pretrained weights")
     parser.add_argument("--learning_rate", "-lr", default=1e-3, help="Path to model")
     parser.add_argument("--batch_size", "-batch", default=128, help="Path to model")
     parser.add_argument("--input_size", "-in", default=32, help="Path to model")

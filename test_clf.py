@@ -12,7 +12,7 @@ from auto_encoder.util import save_dict, check_n_make_dir, load_dict
 
 import argparse
 
-from sklearn.metrics import classification_report, f1_score, accuracy_score, roc_auc_score
+from sklearn.metrics import classification_report, f1_score, accuracy_score, roc_auc_score, balanced_accuracy_score
 
 print("TF VERSION: ", tf.__version__)
 
@@ -79,8 +79,9 @@ def main(args_):
 
     results_df = pd.DataFrame([{
         "clf": "cnn",
-        "F1-Score": f1_score(y_true, y_pred, average="weighted", zero_division=0),
+        "F1-Score": f1_score(y_true, y_pred, average="macro", zero_division=0),
         "Accuracy": accuracy_score(y_true, y_pred),
+        "Balanced Accuracy": balanced_accuracy_score(y_true, y_pred),
         "run": 0,
         "n_labels": cfg.opt["n_labels"]
     }])

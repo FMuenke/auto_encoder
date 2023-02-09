@@ -30,9 +30,9 @@ def main(args_):
     df = args_.dataset_folder
     ds = DataSet(os.path.join(df, "train"))
 
-    assert args_.auto_encoder is not None, "No AutoEncoder to Finetune found."
+    assert args_.pretrained is not None, "No Pretrained Model to Finetune found."
 
-    pretrained_weights_path = os.path.join(args_.auto_encoder, "weights-final.hdf5")
+    pretrained_weights_path = os.path.join(args_.pretrained, "weights-final.hdf5")
     if os.path.isfile(pretrained_weights_path):
         check_n_make_dir(mf)
         shutil.copy(
@@ -40,7 +40,7 @@ def main(args_):
             os.path.join(mf, "ae-weights-final.hdf5")
         )
 
-    ae_config_path = os.path.join(args_.auto_encoder, "opt.json")
+    ae_config_path = os.path.join(args_.pretrained, "opt.json")
     if os.path.isfile(ae_config_path):
         check_n_make_dir(mf)
         shutil.copy(
@@ -56,6 +56,7 @@ def main(args_):
 
     cfg.opt["n_labels"] = int(args_.n_labels)
     cfg.opt["init_learning_rate"] = float(args_.learning_rate)
+    cfg.opt["batch_size"] = int(args_.batch_size)
     cfg.opt["freeze"] = args_.freeze_backbone
 
     cfg.opt["augmentation"] = args_.augmentation
@@ -79,6 +80,8 @@ def main(args_):
         images = ds.get_data()
         min_nb = np.min([counts[c] for c in counts])
         min_nb = min_nb * len(class_mapping)
+
+        test_images, train_images = sample_images_by_class(images, int(min_nb * 0.10), class_mapping)
 
     if cfg.opt["augmentation"] == "None":
         aug = None
@@ -118,7 +121,8 @@ def parse_args():
     parser.add_argument("--drop_rate", "-drop", default=0.0, help="Dropout during Embedding")
     parser.add_argument("--dropout_structure", "-drops", default="general", help="Dropout during Embedding")
     parser.add_argument("--n_labels", "-n", default=0, help="Number of Samples to train with")
-    parser.add_argument("--learning_rate", "-lr", default=0.001, help="Initial Learning Rate")
+    parser.add_argument("--learning_rate", "-lr", default=0.0001, help="Initial Learning Rate")
+    parser.add_argument("--batch_size", "-batch", default=16, help="Batch Size")
     return parser.parse_args()
 
 

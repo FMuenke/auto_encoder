@@ -15,7 +15,7 @@ from auto_encoder.data_generator import ClassificationDataGenerator
 from auto_encoder.util import check_n_make_dir
 from auto_encoder.util import prepare_input
 
-from auto_encoder.auto_encoder import AutoEncoder
+os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 
 
 class ImageClassifier:

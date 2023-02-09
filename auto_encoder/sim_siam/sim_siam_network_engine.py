@@ -21,6 +21,19 @@ class SimSiamEngine(tf.keras.Model):
         self.encoder = encoder
 
         projection_size = int(encoder.output.shape[-1])
+        w_decay = 0.0005
+        self.projection_head = keras.Sequential(
+            [
+                keras.Input(shape=(projection_size,)),
+                layers.Dense(projection_size, use_bias=False, kernel_regularizer=keras.regularizers.l2(w_decay)),
+                layers.BatchNormalization(),
+                layers.ReLU(),
+                layers.Dense(projection_size, use_bias=False, kernel_regularizer=keras.regularizers.l2(w_decay)),
+                layers.BatchNormalization()
+            ],
+            name="projection_head",
+        )
+
         self.predictor = keras.Sequential(
             [
                 # Note the AutoEncoder-like structure.
@@ -49,6 +62,7 @@ class SimSiamEngine(tf.keras.Model):
         # Forward pass through the encoder and predictor.
         with tf.GradientTape() as tape:
             z1, z2 = self.encoder(ds_one), self.encoder(ds_two)
+            z1, z2 = self.projection_head(z1), self.projection_head(z2)
             p1, p2 = self.predictor(z1), self.predictor(z2)
             # Note that here we are enforcing the network to match
             # the representations of two differently augmented batches
@@ -56,7 +70,7 @@ class SimSiamEngine(tf.keras.Model):
             loss = compute_loss(p1, z2) / 2 + compute_loss(p2, z1) / 2
 
         # Compute gradients and update the parameters.
-        learnable_params = (self.encoder.trainable_variables + self.predictor.trainable_variables)
+        learnable_params = (self.encoder.trainable_variables + self.projection_head.trainable_variables + self.predictor.trainable_variables)
         gradients = tape.gradient(loss, learnable_params)
         self.optimizer.apply_gradients(zip(gradients, learnable_params))
 
@@ -66,6 +80,7 @@ class SimSiamEngine(tf.keras.Model):
 
     def call(self, inputs, training=None, mask=None):
         z = self.encoder(inputs)
+        z = self.projection_head(z)
         p = self.predictor(z)
         return p
 
@@ -75,10 +90,9 @@ class SimSiamEngine(tf.keras.Model):
 
         # Forward pass through the encoder and predictor.
         z1, z2 = self.encoder(ds_one), self.encoder(ds_two)
+        z1, z2 = self.projection_head(z1), self.projection_head(z2)
         p1, p2 = self.predictor(z1), self.predictor(z2)
-        # Note that here we are enforcing the network to match
-        # the representations of two differently augmented batches
-        # of data.
+
         loss = compute_loss(p1, z2) / 2 + compute_loss(p2, z1) / 2
 
         # Monitor loss.

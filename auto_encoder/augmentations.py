@@ -152,7 +152,7 @@ def apply_vertical_flip(img, lab, percentage):
     return img, lab
 
 
-def apply_crop(img, lab, percentage=0.10):
+def apply_crop(img, lab, percentage=0.10, force_square=True):
     if percentage <= 0.0:
         return img, lab
     height, width, ch = img.shape
@@ -161,8 +161,13 @@ def apply_crop(img, lab, percentage=0.10):
     ar_h = np.random.choice([0.70, 0.80, 0.90, 1])
     ar_w = np.random.choice([0.70, 0.80, 0.90, 1])
 
-    crop_height = np.max([int(percentage * height * ar_h), 4])
-    crop_width = np.max([int(percentage * width * ar_w), 4])
+    if force_square:
+        side = np.min([height, width])
+        crop_height = np.max([int(percentage * side * ar_h), 4])
+        crop_width = np.max([int(percentage * side * ar_w), 4])
+    else:
+        crop_height = np.max([int(percentage * height * ar_h), 4])
+        crop_width = np.max([int(percentage * width * ar_w), 4])
 
     y1_img = np.random.randint(height - crop_height)
     x1_img = np.random.randint(width - crop_width)
@@ -172,6 +177,14 @@ def apply_crop(img, lab, percentage=0.10):
     img = cv2.resize(img, (width, height), interpolation=cv2.INTER_CUBIC)
     lab = cv2.resize(lab, (width, height), interpolation=cv2.INTER_CUBIC)
     return img, lab
+
+
+def apply_center_crop(img):
+    height, width, ch = img.shape
+    crop_size = np.min([height, width])
+    x1_img = int(round(width / 2 - crop_size / 2))
+    y1_img = int(round(height / 2 - crop_size / 2))
+    return img[y1_img:y1_img + crop_size, x1_img:x1_img + crop_size, :]
 
 
 def apply_rotation_90(img, lab, percentage):

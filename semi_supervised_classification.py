@@ -119,6 +119,7 @@ def main(args_):
     df = args_.dataset_folder
     model_path = args_.model
     direct_features = bool(args_.direct_features)
+    use_all = bool(args_.use_all_samples)
 
     class_mapping = load_dict(os.path.join(df, "class_mapping.json"))
 
@@ -128,15 +129,13 @@ def main(args_):
         model_path, class_mapping
     )
 
-    # x_train = np.load(os.path.join(model_path, "x_train{}.npy".format(ds_ident)))
-    # y_train = np.load(os.path.join(model_path, "y_train{}.npy".format(ds_ident)))
-
-    # x_test = np.load(os.path.join(model_path, "x_test{}.npy".format(ds_ident)))
-    # y_test = np.load(os.path.join(model_path, "y_test{}.npy".format(ds_ident)))
-
     vis_embeddings(x_train, y_train, x_test, y_test, model_path)
 
-    eval_semi_supervised_classification(x_train, y_train, x_test, y_test, model_path, direct_features=direct_features)
+    eval_semi_supervised_classification(
+        x_train, y_train, x_test, y_test, model_path,
+        direct_features=direct_features,
+        use_all=use_all
+    )
 
 
 def parse_args():
@@ -144,6 +143,7 @@ def parse_args():
     parser.add_argument("--dataset_folder", "-df", help="Path to directory with dataset")
     parser.add_argument("--model", "-m", help="Path to model")
     parser.add_argument("--direct_features", "-direct", default=False, help="Use features directly from feature-map")
+    parser.add_argument("--use_all_samples", "-all", default=False, help="Use all samples in the final run")
     return parser.parse_args()
 
 

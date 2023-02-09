@@ -7,7 +7,7 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping, CSVLogger
 
 
-from auto_encoder.backbone.residual import residual_auto_encoder, patchify_residual_auto_encoder
+from auto_encoder.backbone.residual import residual_auto_encoder
 from auto_encoder.backbone.linear import linear_auto_encoder
 from auto_encoder.backbone.mlp import mlp_auto_encoder
 from auto_encoder.backbone.vision_transformer import vit_auto_encoder
@@ -112,8 +112,10 @@ class AutoEncoder:
                 dropout_structure=self.dropout_structure,
                 asymmetrical=self.asymmetrical, use_stem=True,
             )
-        elif self.backbone in ["patch-4-resnet", "patch-4-residual"]:
-            x_input, bottleneck, output = patchify_residual_auto_encoder(
+        elif self.backbone in ["patch-2-residual", "patch-4-residual", "patch-8-residual"]:
+            p_size = self.backbone.replace("patch-", "")
+            p_size = int(p_size.replace("-residual", ""))
+            x_input, bottleneck, output = residual_auto_encoder(
                 input_shape=self.input_shape,
                 embedding_size=self.embedding_size,
                 embedding_type=self.embedding_type,
@@ -123,20 +125,7 @@ class AutoEncoder:
                 resolution=self.resolution,
                 drop_rate=self.drop_rate,
                 dropout_structure=self.dropout_structure,
-                asymmetrical=self.asymmetrical, patch_size=4,
-            )
-        elif self.backbone in ["patch-2-resnet", "patch-2-residual"]:
-            x_input, bottleneck, output = patchify_residual_auto_encoder(
-                input_shape=self.input_shape,
-                embedding_size=self.embedding_size,
-                embedding_type=self.embedding_type,
-                embedding_activation=self.embedding_activation,
-                depth=self.depth,
-                scale=self.scale,
-                resolution=self.resolution,
-                drop_rate=self.drop_rate,
-                dropout_structure=self.dropout_structure,
-                asymmetrical=self.asymmetrical, patch_size=2
+                asymmetrical=self.asymmetrical, patch_size=p_size,
             )
         elif self.backbone in ["small_resnet", "small_residual"]:
             x_input, bottleneck, output = small_residual_auto_encoder(

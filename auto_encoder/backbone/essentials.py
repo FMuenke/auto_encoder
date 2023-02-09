@@ -6,7 +6,7 @@ def add_classification_head(x, n_classes, hidden_units, dropout_rate=0.75):
     for i, units in enumerate(hidden_units):
         x = layers.Dense(units, activation=tf.nn.gelu, name="clf_{}".format(i))(x)
         x = layers.Dropout(dropout_rate)(x)
-    output = layers.Dense(n_classes, kernel_regularizer="l2", name="clf_final")(x)
+    output = layers.Dense(n_classes, name="clf_final")(x)
     return output
 
 

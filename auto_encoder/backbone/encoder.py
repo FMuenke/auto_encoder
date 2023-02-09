@@ -13,7 +13,7 @@ def get_encoder(
         resolution,
         drop_rate,
         dropout_structure
-    ):
+        ):
     if backbone in ["resnet", "residual"]:
         x_in, output = make_residual_encoder(
             input_shape=input_shape,
@@ -25,6 +25,32 @@ def get_encoder(
             resolution=resolution,
             drop_rate=drop_rate,
             dropout_structure=dropout_structure,
+        )
+    elif backbone in ["stem-resnet", "stem-residual"]:
+        x_in, output = make_residual_encoder(
+            input_shape=input_shape,
+            embedding_size=embedding_size,
+            embedding_type=embedding_type,
+            embedding_activation=embedding_activation,
+            depth=depth,
+            scale=scale,
+            resolution=resolution,
+            drop_rate=drop_rate,
+            dropout_structure=dropout_structure, use_stem=True
+        )
+    elif backbone in ["patch-2-residual", "patch-4-residual", "patch-8-residual"]:
+        p_size = backbone.replace("patch-", "")
+        p_size = int(p_size.replace("-residual", ""))
+        x_in, output = make_residual_encoder(
+            input_shape=input_shape,
+            embedding_size=embedding_size,
+            embedding_type=embedding_type,
+            embedding_activation=embedding_activation,
+            depth=depth,
+            scale=scale,
+            resolution=resolution,
+            drop_rate=drop_rate,
+            dropout_structure=dropout_structure, use_stem=False, p_size=p_size,
         )
     elif backbone in ["xception"]:
         base_model = keras.applications.xception.Xception(
@@ -44,6 +70,14 @@ def get_encoder(
         x_in, output = base_model.input, base_model.output
     elif backbone in ["efficientnetB0"]:
         base_model = keras.applications.efficientnet.EfficientNetB0(
+            weights=None,
+            include_top=False,
+            pooling="avg",
+            input_shape=(input_shape[0], input_shape[1], 3),
+        )
+        x_in, output = base_model.input, base_model.output
+    elif backbone in ["efficientnetB7"]:
+        base_model = keras.applications.efficientnet.EfficientNetB7(
             weights=None,
             include_top=False,
             pooling="avg",

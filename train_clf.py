@@ -81,7 +81,6 @@ def main(args_):
         images = ds.get_data()
         min_nb = np.min([counts[c] for c in counts])
         min_nb = min_nb * len(class_mapping)
-
         test_images, train_images = sample_images_by_class(images, int(min_nb * 0.10), class_mapping)
 
     if cfg.opt["augmentation"] == "None":

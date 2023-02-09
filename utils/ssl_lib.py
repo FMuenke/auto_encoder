@@ -4,7 +4,7 @@ import pandas as pd
 
 from sklearn.linear_model import LogisticRegression
 from sklearn import neighbors
-from sklearn.metrics import f1_score, accuracy_score, top_k_accuracy_score
+from sklearn.metrics import f1_score, accuracy_score, top_k_accuracy_score, balanced_accuracy_score
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -18,10 +18,11 @@ def eval_classifier(clf, clf_id, x_train, y_train, x_test, y_test):
     y_pred = clf.predict_proba(x_test)
 
     labels_list = [i for i in range(y_pred.shape[1])]
-    f1 = f1_score(y_test, np.argmax(y_pred, axis=1), average="weighted")
+    f1 = f1_score(y_test, np.argmax(y_pred, axis=1), average="macro")
     acc = accuracy_score(y_test, np.argmax(y_pred, axis=1))
+    bal_acc = balanced_accuracy_score(y_test, np.argmax(y_pred, axis=1))
     acc_5 = top_k_accuracy_score(y_test, y_pred, k=5, labels=labels_list)
-    return f1, acc, acc_5
+    return clf, f1, acc, bal_acc, acc_5
 
 
 def select_random_subset(x_train, y_train, n_labels):
@@ -32,7 +33,7 @@ def select_random_subset(x_train, y_train, n_labels):
 
 def select_random_subset_by_class(x_train, y_train, n_labels):
     n_samples = x_train.shape[0]
-    if n_labels >= n_samples:
+    if n_labels >= n_samples or n_labels == 0:
         print("No sampling!")
         return x_train, y_train
     u_classes = np.unique(y_train)
@@ -56,23 +57,24 @@ def select_random_subset_by_class(x_train, y_train, n_labels):
     return x_sampled, y_sampled
 
 
-def cls_test_run(x_train, y_train, x_test, y_test, n_labels, run_id):
+def cls_test_run(x_train, y_train, x_test, y_test, n_labels, run_id, model_folder):
     clf_list = [
         [LogisticRegression(max_iter=10000, n_jobs=-1), "LR"],
         [TfMlp(x_train.shape[1], 100, [512, 256], dropout_rate=0.75), "TF-MLP (512, 256) drp=0.75"],
-        # [TfMlp(x_train.shape[1], 100, [1024], dropout_rate=0.75), "TF-MLP (1024) drp=0.75"],
-        # [neighbors.NearestCentroid(), "NC"],
         [neighbors.KNeighborsClassifier(), "KNN"]
     ]
 
     data_frame = []
     x_train, y_train = select_random_subset_by_class(x_train, y_train, n_labels)
     for clf, clf_id in clf_list:
-        f1, acc, acc_5 = eval_classifier(clf, clf_id, x_train, y_train, x_test, y_test)
+        clf, f1, acc, bal_acc, acc_5 = eval_classifier(clf, clf_id, x_train, y_train, x_test, y_test)
+        if clf_id.startswith("TF-MLP"):
+            clf.save(os.path.join(model_folder, "{}_{}-{}.hdf5".format(clf_id, run_id, n_labels)))
         data_frame.append({
             "clf": clf_id,
             "F1-Score": f1,
             "Accuracy": acc,
+            "Balanced Accuracy": bal_acc,
             "Top 5 Accuracy": acc_5,
             "n_labels": n_labels,
             "run": run_id,
@@ -81,15 +83,17 @@ def cls_test_run(x_train, y_train, x_test, y_test, n_labels, run_id):
     return data_frame
 
 
-def eval_semi_supervised_classification(x_train, y_train, x_test, y_test, save_path, direct_features):
+def eval_semi_supervised_classification(x_train, y_train, x_test, y_test, save_path, direct_features, use_all):
     data_frame = []
 
     u_classes = np.unique(y_train)
     n_classes = len(u_classes)
-
-    for n_labels in [n_classes*4, n_classes*10, n_classes*20, n_classes*40, n_classes*100]:
-        for i in range(1):
-            data_frame_p = cls_test_run(x_train, y_train, x_test, y_test, n_labels, i)
+    for i in range(1):
+        for n_labels in [n_classes*4, n_classes*10, n_classes*20, n_classes*40, n_classes*80]:
+            data_frame_p = cls_test_run(x_train, y_train, x_test, y_test, n_labels, i, save_path)
+            data_frame.append(data_frame_p)
+        if use_all:
+            data_frame_p = cls_test_run(x_train, y_train, x_test, y_test, y_train.shape[0], i, save_path)
             data_frame.append(data_frame_p)
     data_frame = pd.concat(data_frame, ignore_index=True)
 
