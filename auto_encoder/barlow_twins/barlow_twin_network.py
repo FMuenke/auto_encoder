@@ -11,7 +11,7 @@ from auto_encoder.backbone.encoder import get_encoder
 from auto_encoder.barlow_twins.barlow_twin_network_engine import BarlowTwin, BarlowLoss
 from auto_encoder.barlow_twins.barlow_twin_data_generator import DataGenerator
 
-from auto_encoder.util import check_n_make_dir, prepare_input
+from auto_encoder.util import check_n_make_dir, prepare_multi_input_sim_clr
 
 
 class BarlowTwinNetwork(AutoEncoder):
@@ -36,11 +36,10 @@ class BarlowTwinNetwork(AutoEncoder):
         return BarlowTwin(encoder)
 
     def encode(self, data):
-        data = prepare_input(data, self.input_shape)
-        data = np.expand_dims(data, axis=0)
+        data = prepare_multi_input_sim_clr(data, self.input_shape)
         res = self.model.predict_on_batch(data)
-        res = np.array(res)
-        return res
+        res = np.mean(np.array(res), axis=0)
+        return np.expand_dims(res, axis=0)
 
     def build(self, compile_model=True, add_decoder=True):
         self.model = self.get_backbone()

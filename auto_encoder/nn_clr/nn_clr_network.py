@@ -9,7 +9,7 @@ from auto_encoder.auto_encoder import AutoEncoder
 from auto_encoder.backbone.encoder import get_encoder
 from auto_encoder.nn_clr.nn_clr_network_engine import NNCLR
 
-from auto_encoder.util import check_n_make_dir, prepare_input_sim_clr
+from auto_encoder.util import check_n_make_dir, prepare_multi_input_sim_clr
 
 
 class NearestNeighbourCLRNetwork(AutoEncoder):
@@ -43,11 +43,10 @@ class NearestNeighbourCLRNetwork(AutoEncoder):
         )
 
     def encode(self, data):
-        data = prepare_input_sim_clr(data, self.input_shape)
-        data = np.expand_dims(data, axis=0)
+        data = prepare_multi_input_sim_clr(data, self.input_shape)
         res = self.model.predict_on_batch(data)
-        res = np.array(res)
-        return res
+        res = np.mean(np.array(res), axis=0)
+        return np.expand_dims(res, axis=0)
 
     def build(self, compile_model=True, add_decoder=True):
         self.model = self.get_backbone()

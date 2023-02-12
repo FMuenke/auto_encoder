@@ -10,7 +10,7 @@ from auto_encoder.auto_encoder import AutoEncoder
 from auto_encoder.backbone.encoder import get_encoder
 from auto_encoder.sim_siam.sim_siam_network_engine import SimSiamEngine
 
-from auto_encoder.util import check_n_make_dir, prepare_input
+from auto_encoder.util import check_n_make_dir, prepare_multi_input_sim_clr
 
 
 class SimpleSiameseNetwork(AutoEncoder):
@@ -41,10 +41,10 @@ class SimpleSiameseNetwork(AutoEncoder):
         return SimSiamEngine(encoder)
 
     def encode(self, data):
-        data = prepare_input(data, self.input_shape)
-        data = np.expand_dims(data, axis=0)
+        data = prepare_multi_input_sim_clr(data, self.input_shape)
         res = self.model.predict_on_batch(data)
-        res = np.array(res)
+        res = np.mean(np.array(res), axis=0)
+        res = np.expand_dims(res, axis=0)
         return res
 
     def build(self, compile_model=True, add_decoder=True):

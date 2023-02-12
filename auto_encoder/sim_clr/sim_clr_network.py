@@ -5,13 +5,13 @@ import tensorflow_addons as tfa
 from tensorflow import keras
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, CSVLogger
 
-from auto_encoder.augmentations import apply_center_crop
+# from auto_encoder.augmentations import apply_center_crop
 from auto_encoder.sim_clr.sim_clr_data_generator import SimCLRDataGenerator
 from auto_encoder.auto_encoder import AutoEncoder
 from auto_encoder.backbone.encoder import get_encoder
 from auto_encoder.sim_clr.sim_clr_network_engine import ContrastiveModel
 
-from auto_encoder.util import check_n_make_dir, prepare_input_sim_clr
+from auto_encoder.util import check_n_make_dir, prepare_input_sim_clr, prepare_multi_input_sim_clr
 
 
 class SimpleContrastiveLearning(AutoEncoder):
@@ -44,11 +44,10 @@ class SimpleContrastiveLearning(AutoEncoder):
         )
 
     def encode(self, data):
-        data = apply_center_crop(data)
-        data = prepare_input_sim_clr(data, self.input_shape)
-        data = np.expand_dims(data, axis=0)
+        data = prepare_multi_input_sim_clr(data, self.input_shape)
         res = self.model.predict_on_batch(data)
-        res = np.array(res)
+        res = np.mean(np.array(res), axis=0)
+        res = np.expand_dims(res, axis=0)
         return res
 
     def build(self, compile_model=True, add_decoder=True):

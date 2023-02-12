@@ -72,7 +72,7 @@ def make_residual_encoder(
     input_layer = layers.Input(batch_shape=(None, input_shape[0], input_shape[1], input_shape[2]))
 
     if use_stem:
-        x = layers.Convolution2D(8 * resolution, (7, 7), (3, 3), name="STEM")(input_layer)
+        x = layers.Convolution2D(8 * resolution, (7, 7), (3, 3), name="STEM", padding="same")(input_layer)
         x = relu_bn(x, name="STEM-NORM")
         x = layers.MaxPool2D()(x)
     elif p_size > 0:

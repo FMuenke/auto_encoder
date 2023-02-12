@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import os
 import json
+from auto_encoder.augmentations import apply_crop
 
 
 def prepare_input(data, input_shape):
@@ -14,8 +15,19 @@ def prepare_input(data, input_shape):
 def prepare_input_sim_clr(data, input_shape):
     data = cv2.resize(data, (int(input_shape[1]), int(input_shape[0])), interpolation=cv2.INTER_CUBIC)
     data = data.astype(np.float)
-    data = data / 255
+    data = data / 255 - 0.5
     return data
+
+
+def prepare_multi_input_sim_clr(data, input_shape, n_crops=8, max_percentage=0.75):
+    multi_crops = []
+    lab = np.zeros(data.shape)
+    for _ in range(n_crops):
+        data_crop, _ = apply_crop(data, lab, percentage=np.random.randint(100 * max_percentage) / 100)
+        data_crop = prepare_input_sim_clr(data_crop, input_shape)
+        multi_crops.append(data_crop)
+    multi_crops = np.array(multi_crops)
+    return multi_crops
 
 
 def check_n_make_dir(tar_dir, clean=False):
