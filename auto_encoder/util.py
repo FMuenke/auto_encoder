@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import os
 import json
-from auto_encoder.augmentations import apply_crop
+from auto_encoder.augmentations import apply_crop, apply_center_crop
 
 
 def prepare_input(data, input_shape):
@@ -19,7 +19,7 @@ def prepare_input_sim_clr(data, input_shape):
     return data
 
 
-def prepare_multi_input_sim_clr(data, input_shape, n_crops=8, max_percentage=0.75):
+def prepare_multi_input_sim_clr(data, input_shape, n_crops=8, max_percentage=0.25):
     multi_crops = []
     lab = np.zeros(data.shape)
     for _ in range(n_crops):

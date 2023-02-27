@@ -349,6 +349,8 @@ def apply_imagine_patches(img, lab, n_patches=8, percentage=0.25):
     for p_i, patch in enumerate(patches):
         if p_i in patch_selected:
             patch = np.random.randint(0, 255, size=patch.shape)
+            # patch = np.zeros(patch.shape)
+            # patch = 255 / 2 * np.ones(patch.shape)
         patches[p_i] = patch
     img = patches_to_img(patches, size)
     img = cv2.resize(img, (width, height), interpolation=cv2.INTER_CUBIC)

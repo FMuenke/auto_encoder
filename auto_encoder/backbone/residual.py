@@ -1,3 +1,4 @@
+import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 
@@ -45,11 +46,17 @@ def make_residual_decoder(x, input_shape, depth, resolution, scale, embedding_si
     if asymmetrical:
         x = transform_to_feature_maps(x, reshape_layer_dim, reshape_layer_dim, embedding_size)
         x = make_decoder_stack(x, depth, resolution=1)
+        output = layers.Conv2DTranspose(3, 3, 2, padding='same', activation='linear', name='conv_transpose_5')(x)
     else:
-        x = transform_to_feature_maps(x, reshape_layer_dim, reshape_layer_dim, embedding_size)
-        x = make_decoder_stack(x, depth, resolution, scale=scale)
+        # x = transform_to_feature_maps(x, reshape_layer_dim, reshape_layer_dim, embedding_size)
+        # x = make_decoder_stack(x, depth, resolution, scale=scale)
+        d = 4
+        f = 8
+        x = layers.Dense(int(input_shape[0] / d * input_shape[1] / d * f), name='dense_pixel')(x)
+        x = relu_bn(x)
+        x = tf.reshape(x, [-1, int(input_shape[0] / d), int(input_shape[1] / d), f], name='reshape_to_output')
+        output = layers.Conv2DTranspose(5, 5, d, padding='same', activation='linear', name='conv_transpose_5')(x)
 
-    output = layers.Conv2DTranspose(3, 3, 2, padding='same', activation='linear', name='conv_transpose_5')(x)
     return output
 
 
@@ -166,7 +173,7 @@ def residual_variational_auto_encoder(
 
     latent_inputs = keras.Input(shape=(embedding_size,))
     x = latent_inputs
-    output = make_residual_decoder(x, input_shape, depth, resolution, scale, embedding_size, asymmetrical)
+    output = make_residual_decoder(x, input_shape, depth, resolution, scale, embedding_size, asymmetrical=False)
     decoder = keras.Model(latent_inputs, output, name="decoder")
 
     return encoder, decoder

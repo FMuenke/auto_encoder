@@ -1,4 +1,5 @@
 import os
+import tensorflow as tf
 import numpy as np
 from tensorflow.keras import optimizers
 
@@ -18,6 +19,8 @@ from auto_encoder.util import check_n_make_dir
 from auto_encoder.util import prepare_input
 
 os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+if not tf.test.is_gpu_available():
+    print("[WARNING] GPU IS NOT AVAILABLE!")
 
 # try:
     # physical_devices = tf.config.experimental.list_physical_devices('GPU')
@@ -241,7 +244,7 @@ class AutoEncoder:
         patience = 32
         reduce_lr = ReduceLROnPlateau(monitor=self.metric_to_track, verbose=1, patience=int(patience*0.5))
         # reduce_lr = CosineDecayRestarts(initial_learning_rate=self.init_learning_rate, first_decay_steps=1000)
-        early_stop = EarlyStopping(monitor=self.metric_to_track, patience=patience, verbose=1)
+        early_stop = EarlyStopping(monitor=self.metric_to_track, patience=patience, verbose=1, min_delta=0.001)
         csv_logger = CSVLogger(filename=os.path.join(self.model_folder, "logs.csv"))
 
         callback_list = [checkpoint, reduce_lr, early_stop, csv_logger]
