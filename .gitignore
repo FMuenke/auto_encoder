@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+.DS_Store
 # C extensions
 *.so
 convert_traffic_sign_data_set.py
